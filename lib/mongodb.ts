@@ -1,4 +1,5 @@
 import "server-only";
+import { attachDatabasePool } from "@vercel/functions";
 import mongoose from "mongoose";
 
 type MongooseCache = {
@@ -34,6 +35,13 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
     bufferCommands: false,
     serverSelectionTimeoutMS: 10_000,
     maxPoolSize: 10,
+    // Close idle connections quickly so suspended serverless instances don't hold them.
+    maxIdleTimeMS: 5_000,
+  }).then((conn) => {
+    // On Vercel, keeps the function alive just long enough to release idle
+    // connections cleanly. A no-op elsewhere.
+    attachDatabasePool(conn.connection.getClient());
+    return conn;
   });
 
   try {

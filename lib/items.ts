@@ -2,13 +2,16 @@ import "server-only";
 import { WAITING_PERIOD_MS } from "@/lib/constants";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Item, type ItemDocument } from "@/models/Item";
-import type { ApiErrorCode, ReviewQueueResponse } from "@/types/api";
+import type { ApiErrorCode, HistoryResponse, ReviewQueueResponse } from "@/types/api";
 import type { ItemDecision, ItemDTO } from "@/types/item";
 
 // Every query in this file is scoped by the caller's Clerk userId, which must
 // come from the server-side session, never from the request body.
 
 const REVIEW_QUEUE_LIMIT = 100;
+const HISTORY_LIMIT = 500;
+
+const roundCents = (n: number) => Math.round(n * 100) / 100;
 
 /**
  * 24 hours, unless WAITING_PERIOD_SECONDS is set in development so the review
@@ -97,4 +100,37 @@ export async function undoDecision(userId: string, itemId: string): Promise<Item
     { returnDocument: "after" },
   );
   return item ? { ok: true, item: toItemDTO(item) } : { ok: false, reason: "not_found" };
+}
+
+/**
+ * The user's reviewed items plus totals. Totals are aggregated in MongoDB over
+ * every reviewed item, so they stay correct even when the list is capped.
+ */
+export async function getHistory(userId: string): Promise<HistoryResponse> {
+  await connectToDatabase();
+  const filter = { userId, status: "reviewed" as const };
+  const [items, groups] = await Promise.all([
+    Item.find(filter).sort({ decidedAt: -1, _id: -1 }).limit(HISTORY_LIMIT + 1),
+    Item.aggregate<{ _id: ItemDecision; count: number; total: number }>([
+      { $match: filter },
+      { $group: { _id: "$decision", count: { $sum: 1 }, total: { $sum: "$price" } } },
+    ]),
+  ]);
+
+  const buy = groups.find((g) => g._id === "buy");
+  const skip = groups.find((g) => g._id === "skip");
+  const bought = buy?.count ?? 0;
+  const skipped = skip?.count ?? 0;
+
+  return {
+    items: items.slice(0, HISTORY_LIMIT).map(toItemDTO),
+    stats: {
+      reviewed: bought + skipped,
+      bought,
+      skipped,
+      moneySaved: roundCents(skip?.total ?? 0),
+      moneySpent: roundCents(buy?.total ?? 0),
+    },
+    truncated: items.length > HISTORY_LIMIT,
+  };
 }

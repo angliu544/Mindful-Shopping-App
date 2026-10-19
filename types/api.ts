@@ -31,3 +31,21 @@ export interface ReviewQueueResponse {
 export interface ItemResponse {
   item: ItemDTO;
 }
+
+export interface HistoryStats {
+  reviewed: number;
+  bought: number;
+  skipped: number;
+  /** Sum of prices of items marked "Do Not Buy". */
+  moneySaved: number;
+  /** Sum of prices of items marked "Buy". */
+  moneySpent: number;
+}
+
+export interface HistoryResponse {
+  /** Reviewed items, most recent decision first (capped at HISTORY_LIMIT). */
+  items: ItemDTO[];
+  stats: HistoryStats;
+  /** True when more items exist than were returned. Stats always cover everything. */
+  truncated: boolean;
+}
