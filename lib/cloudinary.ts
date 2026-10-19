@@ -6,8 +6,15 @@ import type { UploadSignature } from "@/types/api";
 
 const ROOT_FOLDER = "mindful-shopping";
 
+/** Reads an env var, dropping whitespace or quotes accidentally pasted into a dashboard. */
+function readEnv(name: string): string | undefined {
+  return process.env[name]?.trim().replace(/^["']|["']$/g, "") || undefined;
+}
+
 function getConfig() {
-  const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env;
+  const CLOUDINARY_CLOUD_NAME = readEnv("CLOUDINARY_CLOUD_NAME");
+  const CLOUDINARY_API_KEY = readEnv("CLOUDINARY_API_KEY");
+  const CLOUDINARY_API_SECRET = readEnv("CLOUDINARY_API_SECRET");
   if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
     throw new Error(
       "Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET.",

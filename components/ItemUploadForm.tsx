@@ -53,17 +53,19 @@ async function uploadToCloudinary(file: File, sig: UploadSignature): Promise<str
       method: "POST",
       body: form,
     });
-  } catch {
+  } catch (error) {
+    console.error("Cloudinary upload request failed", error);
     throw new RequestError("The photo upload failed. Check your connection and try again.");
   }
   const data = (await res.json().catch(() => null)) as { public_id?: string; error?: { message?: string } } | null;
   if (!res.ok || !data?.public_id) {
-    const detail = data?.error?.message ?? "";
-    throw new RequestError(
-      /format/i.test(detail)
-        ? "Please choose a JPEG, PNG, or WebP image."
-        : "The photo upload failed. Please try again.",
-    );
+    const detail = data?.error?.message ?? `HTTP ${res.status}`;
+    console.error(`Cloudinary rejected the upload (${res.status}): ${detail}`);
+    if (/format/i.test(detail)) throw new RequestError("Please choose a JPEG, PNG, or WebP image.");
+    if (/file size|too large/i.test(detail)) throw new RequestError("That photo is too large. Please choose a smaller one.");
+    // Cloudinary's reason (e.g. "Invalid Signature", "Invalid cloud_name") contains no
+    // secrets and is what you need to fix a misconfigured deployment.
+    throw new RequestError(`The photo upload failed (${res.status}: ${detail.slice(0, 80)}). Please try again.`);
   }
   return data.public_id;
 }
