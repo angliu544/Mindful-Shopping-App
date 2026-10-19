@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import {connection} from "next/server";
 import HistoryView from "@/components/HistoryView";
 import LoadingState from "@/components/LoadingState";
 import { requireUserId } from "@/lib/auth";
@@ -20,6 +21,7 @@ export default function HistoryPage() {
 }
 
 async function HistoryContent() {
+  await connection();
   const userId = await requireUserId();
   // Errors propagate to app/history/error.tsx, which offers a retry.
   const [history, income] = await Promise.all([getHistory(userId), getIncomeSettings(userId)]);
