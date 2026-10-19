@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import Link from "next/link";
 import { ALLOWED_IMAGE_TYPES, ITEM_DESCRIPTION_MAX_LENGTH, ITEM_NAME_MAX_LENGTH } from "@/lib/constants";
+import { describeUploadError } from "@/lib/upload-errors";
 import { fieldErrorsOf, itemFieldsSchema, parsePriceInput, validateImageFile } from "@/lib/validations";
 import type { ApiErrorBody, CreateItemResponse, UploadSignature } from "@/types/api";
 import type { ItemDTO } from "@/types/item";
@@ -61,11 +62,7 @@ async function uploadToCloudinary(file: File, sig: UploadSignature): Promise<str
   if (!res.ok || !data?.public_id) {
     const detail = data?.error?.message ?? `HTTP ${res.status}`;
     console.error(`Cloudinary rejected the upload (${res.status}): ${detail}`);
-    if (/format/i.test(detail)) throw new RequestError("Please choose a JPEG, PNG, or WebP image.");
-    if (/file size|too large/i.test(detail)) throw new RequestError("That photo is too large. Please choose a smaller one.");
-    // Cloudinary's reason (e.g. "Invalid Signature", "Invalid cloud_name") contains no
-    // secrets and is what you need to fix a misconfigured deployment.
-    throw new RequestError(`The photo upload failed (${res.status}: ${detail.slice(0, 80)}). Please try again.`);
+    throw new RequestError(describeUploadError(res.status, detail));
   }
   return data.public_id;
 }
