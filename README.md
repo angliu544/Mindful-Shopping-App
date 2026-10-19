@@ -44,7 +44,7 @@ Then fill in `.env.local` as described below. `.env.local` is git-ignored; never
 | `CLOUDINARY_CLOUD_NAME` | server + build | Your Cloudinary cloud name |
 | `CLOUDINARY_API_KEY` | server only | Cloudinary API key |
 | `CLOUDINARY_API_SECRET` | server only | Cloudinary API secret |
-| `WAITING_PERIOD_SECONDS` | dev only, optional | Shortens the 24-hour wait for local testing. **Ignored in production builds. Don't set it on Vercel.** |
+| `WAITING_PERIOD_SECONDS` | server only, optional | Overrides the 24-hour wait, in seconds (`0` = items are reviewable immediately). Useful for local testing or a demo deployment. Leave it unset for the real 24-hour pause. |
 
 Only `NEXT_PUBLIC_*` values reach the browser. Everything else is read only in `server-only` modules (`lib/mongodb.ts`, `lib/cloudinary.ts`).
 
@@ -122,7 +122,7 @@ The first `npm test` downloads a MongoDB binary for the in-memory database (abou
 
 1. Push the repository to GitHub, GitLab or Bitbucket.
 2. In Vercel, choose **Add New → Project** and import the repo. The framework preset is **Next.js**; keep the default build settings.
-3. **Settings → Environment Variables**: add every variable from the table above **except** `WAITING_PERIOD_SECONDS`.
+3. **Settings → Environment Variables**: add every variable from the table above. Only add `WAITING_PERIOD_SECONDS` if you want a shorter wait (e.g. `0` for a demo); without it, items wait 24 hours.
    - **Production** environment: use your Clerk **production** keys (see below).
    - **Preview** environment: you can use the development keys.
    - `CLOUDINARY_CLOUD_NAME` is also read at build time, to restrict image optimization to your own cloud.

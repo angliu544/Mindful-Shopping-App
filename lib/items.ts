@@ -14,13 +14,13 @@ const HISTORY_LIMIT = 500;
 const roundCents = (n: number) => Math.round(n * 100) / 100;
 
 /**
- * 24 hours, unless WAITING_PERIOD_SECONDS is set in development so the review
- * flow can be tested without waiting a day. Ignored in production builds.
+ * 24 hours, unless the WAITING_PERIOD_SECONDS env var sets another wait
+ * (e.g. 0 for a demo deployment). Invalid values fall back to 24 hours.
  */
 export function getWaitingPeriodMs(): number {
-  const raw = process.env.WAITING_PERIOD_SECONDS;
+  const raw = process.env.WAITING_PERIOD_SECONDS?.trim();
   const seconds = Number(raw);
-  if (process.env.NODE_ENV !== "production" && raw && Number.isFinite(seconds) && seconds >= 0) {
+  if (raw && Number.isFinite(seconds) && seconds >= 0) {
     return seconds * 1000;
   }
   return WAITING_PERIOD_MS;
