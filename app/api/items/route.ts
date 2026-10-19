@@ -1,8 +1,8 @@
 import { getApiUserId } from "@/lib/auth";
 import { deleteImage, getStoredImage, userImagePrefix } from "@/lib/cloudinary";
-import { ALLOWED_IMAGE_FORMATS, CURRENCY, MAX_IMAGE_BYTES, WAITING_PERIOD_MS } from "@/lib/constants";
+import { ALLOWED_IMAGE_FORMATS, CURRENCY, MAX_IMAGE_BYTES } from "@/lib/constants";
 import { jsonError, jsonOk } from "@/lib/http";
-import { toItemDTO } from "@/lib/items";
+import { getWaitingPeriodMs, toItemDTO } from "@/lib/items";
 import { connectToDatabase } from "@/lib/mongodb";
 import { createItemSchema, fieldErrorsOf } from "@/lib/validations";
 import { Item } from "@/models/Item";
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
       imageUrl: image.secureUrl,
       imagePublicId: image.publicId,
       description,
-      availableAt: new Date(Date.now() + WAITING_PERIOD_MS),
+      availableAt: new Date(Date.now() + getWaitingPeriodMs()),
       status: "pending",
       decision: null,
       decidedAt: null,
