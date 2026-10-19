@@ -7,7 +7,11 @@ export function jsonOk<T>(body: T, status = 200) {
   return NextResponse.json(body, { status, headers: noStore });
 }
 
-export function jsonError(error: string, status: number, fieldErrors?: Record<string, string>) {
-  const body: ApiErrorBody = fieldErrors ? { error, fieldErrors } : { error };
+export function jsonError(
+  error: string,
+  status: number,
+  extra?: Pick<ApiErrorBody, "fieldErrors" | "code">,
+) {
+  const body: ApiErrorBody = { error, ...extra };
   return NextResponse.json(body, { status, headers: noStore });
 }

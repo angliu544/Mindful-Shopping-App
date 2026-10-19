@@ -14,7 +14,7 @@ export default function Home() {
           Pause before you purchase
         </p>
         <h1 className="mt-4 font-serif text-4xl font-semibold leading-tight text-ink sm:text-5xl">
-          Mindful Shopping
+          Consider
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-lg text-ink-muted">
           Most impulse buys feel different a day later. Save the item, give it 24 hours, then

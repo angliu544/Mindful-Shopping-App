@@ -1,7 +1,14 @@
 import "server-only";
 import { WAITING_PERIOD_MS } from "@/lib/constants";
-import type { ItemDocument } from "@/models/Item";
-import type { ItemDTO } from "@/types/item";
+import { connectToDatabase } from "@/lib/mongodb";
+import { Item, type ItemDocument } from "@/models/Item";
+import type { ApiErrorCode, ReviewQueueResponse } from "@/types/api";
+import type { ItemDecision, ItemDTO } from "@/types/item";
+
+// Every query in this file is scoped by the caller's Clerk userId, which must
+// come from the server-side session, never from the request body.
+
+const REVIEW_QUEUE_LIMIT = 100;
 
 /**
  * 24 hours, unless WAITING_PERIOD_SECONDS is set in development so the review
@@ -31,4 +38,63 @@ export function toItemDTO(doc: ItemDocument): ItemDTO {
     decidedAt: doc.decidedAt ? doc.decidedAt.toISOString() : null,
     createdAt: doc.createdAt.toISOString(),
   };
+}
+
+/** Pending items whose waiting period is over, oldest first. */
+export async function getReviewQueue(userId: string): Promise<ReviewQueueResponse> {
+  await connectToDatabase();
+  const now = new Date();
+  const [ready, next] = await Promise.all([
+    Item.find({ userId, status: "pending", availableAt: { $lte: now } })
+      .sort({ availableAt: 1, _id: 1 })
+      .limit(REVIEW_QUEUE_LIMIT),
+    Item.findOne({ userId, status: "pending", availableAt: { $gt: now } })
+      .sort({ availableAt: 1 })
+      .select("availableAt"),
+  ]);
+  return {
+    items: ready.map(toItemDTO),
+    nextAvailableAt: next ? next.availableAt.toISOString() : null,
+  };
+}
+
+export type ItemMutationResult =
+  | { ok: true; item: ItemDTO }
+  | { ok: false; reason: ApiErrorCode };
+
+/**
+ * Records a decision in a single atomic update that only matches when the item
+ * belongs to the user, is still pending, and is already available. Concurrent
+ * or repeated requests can therefore succeed at most once.
+ */
+export async function decideItem(
+  userId: string,
+  itemId: string,
+  decision: ItemDecision,
+): Promise<ItemMutationResult> {
+  await connectToDatabase();
+  const now = new Date();
+
+  const item = await Item.findOneAndUpdate(
+    { _id: itemId, userId, status: "pending", availableAt: { $lte: now } },
+    { $set: { status: "reviewed", decision, decidedAt: now } },
+    { returnDocument: "after" },
+  );
+  if (item) return { ok: true, item: toItemDTO(item) };
+
+  // Explain the miss. Another user's item looks exactly like a missing one.
+  const existing = await Item.findOne({ _id: itemId, userId }).select("status");
+  if (!existing) return { ok: false, reason: "not_found" };
+  return { ok: false, reason: existing.status === "reviewed" ? "already_reviewed" : "not_ready" };
+}
+
+/** Puts a reviewed item back in the queue (undo). */
+export async function undoDecision(userId: string, itemId: string): Promise<ItemMutationResult> {
+  await connectToDatabase();
+  const item = await Item.findOneAndUpdate(
+    { _id: itemId, userId, status: "reviewed" },
+    { $set: { status: "pending", decision: null, decidedAt: null } },
+    { returnDocument: "after" },
+  );
+  return item ? { ok: true, item: toItemDTO(item) } : { ok: false, reason: "not_found" };
 }

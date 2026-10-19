@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import { Show, SignInButton, SignUpButton } from "@clerk/nextjs";
 import NavLinks from "@/components/NavLinks";
+import UserMenu from "@/components/UserMenu";
 
 export default function Navigation() {
   return (
@@ -11,7 +12,7 @@ export default function Navigation() {
         className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-3"
       >
         <Link href="/" className="font-serif text-lg font-semibold text-sage-700 rounded">
-          Mindful Shopping
+          Consider
         </Link>
         {/* Auth state is request-time data, so it streams in behind a boundary. */}
         <Suspense fallback={<div className="h-9" aria-hidden />}>
@@ -27,7 +28,7 @@ function AuthControls() {
     <div className="flex items-center gap-2 sm:gap-4">
       <Show when="signed-in">
         <NavLinks />
-        <UserButton />
+        <UserMenu />
       </Show>
       <Show when="signed-out">
         <SignInButton>

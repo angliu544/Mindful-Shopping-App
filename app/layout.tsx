@@ -15,7 +15,7 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Mindful Shopping",
+  title: "Consider",
   description: "Pause for 24 hours before you buy. Decide with a clear head.",
 };
 

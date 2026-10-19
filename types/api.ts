@@ -1,7 +1,10 @@
 import type { ItemDTO } from "@/types/item";
 
+export type ApiErrorCode = "not_found" | "already_reviewed" | "not_ready";
+
 export interface ApiErrorBody {
   error: string;
+  code?: ApiErrorCode;
   fieldErrors?: Record<string, string>;
 }
 
@@ -16,5 +19,15 @@ export interface UploadSignature {
 }
 
 export interface CreateItemResponse {
+  item: ItemDTO;
+}
+
+export interface ReviewQueueResponse {
+  items: ItemDTO[];
+  /** When the next still-waiting item becomes reviewable, if any. */
+  nextAvailableAt: string | null;
+}
+
+export interface ItemResponse {
   item: ItemDTO;
 }

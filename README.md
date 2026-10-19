@@ -1,4 +1,4 @@
-# Mindful Shopping
+# Consider
 
 Pause before you purchase. Upload a photo of something you want, wait 24 hours, then swipe right to buy or left to let it go, and track how much you've saved.
 

@@ -6,6 +6,8 @@ import {
   MAX_IMAGE_BYTES,
   MAX_PRICE,
 } from "@/lib/constants";
+import { ITEM_DECISIONS } from "@/types/item";
+import { INCOME_TYPES } from "@/types/settings";
 
 // Shared by the upload form and the API so both give the same messages.
 
@@ -66,3 +68,50 @@ export function parsePriceInput(raw: string): number {
   if (!/^\d*\.?\d*$/.test(cleaned) || cleaned === "" || cleaned === ".") return Number.NaN;
   return Number(cleaned);
 }
+
+export const objectIdSchema = z.string().regex(/^[a-f\d]{24}$/i, "That item couldn't be found.");
+
+export const decisionBodySchema = z.object({
+  decision: z.enum(ITEM_DECISIONS, { error: 'Decision must be "buy" or "skip".' }),
+});
+
+const MAX_HOURLY_RATE = 5_000;
+
+export const incomeSettingsSchema = z
+  .object({
+    incomeType: z.enum(INCOME_TYPES, { error: "Choose hourly pay or yearly salary." }),
+    incomeAmount: z
+      .number({ error: "Please enter your income, like 25 or 60000." })
+      .positive("Income must be more than zero.")
+      .max(100_000_000, "That number looks too high. Please check it.")
+      .refine((v) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-6, "Use at most two decimal places.")
+      .transform((v) => Math.round(v * 100) / 100),
+    // Only used for a salary, to work out the hourly rate.
+    hoursPerWeek: z
+      .number({ error: "Please enter how many hours you work per week." })
+      .min(1, "Hours per week must be at least 1.")
+      .max(100, "Hours per week can be at most 100.")
+      .nullish(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.incomeType === "hourly" && value.incomeAmount > MAX_HOURLY_RATE) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["incomeAmount"],
+        message: "That's a lot per hour. Did you mean a yearly salary?",
+      });
+    }
+    if (value.incomeType === "salary" && value.hoursPerWeek == null) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["hoursPerWeek"],
+        message: "Please enter how many hours you work per week.",
+      });
+    }
+  })
+  .transform((value) => ({
+    ...value,
+    hoursPerWeek: value.incomeType === "salary" ? (value.hoursPerWeek ?? null) : null,
+  }));
+
+export type IncomeSettingsInput = z.infer<typeof incomeSettingsSchema>;

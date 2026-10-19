@@ -2,11 +2,24 @@ import { getApiUserId } from "@/lib/auth";
 import { deleteImage, getStoredImage, userImagePrefix } from "@/lib/cloudinary";
 import { ALLOWED_IMAGE_FORMATS, CURRENCY, MAX_IMAGE_BYTES } from "@/lib/constants";
 import { jsonError, jsonOk } from "@/lib/http";
-import { getWaitingPeriodMs, toItemDTO } from "@/lib/items";
+import { getReviewQueue, getWaitingPeriodMs, toItemDTO } from "@/lib/items";
 import { connectToDatabase } from "@/lib/mongodb";
 import { createItemSchema, fieldErrorsOf } from "@/lib/validations";
 import { Item } from "@/models/Item";
-import type { CreateItemResponse } from "@/types/api";
+import type { CreateItemResponse, ReviewQueueResponse } from "@/types/api";
+
+/** Items ready for review: the user's pending items whose waiting period is over. */
+export async function GET() {
+  const userId = await getApiUserId();
+  if (!userId) return jsonError("Please sign in to review items.", 401);
+
+  try {
+    return jsonOk<ReviewQueueResponse>(await getReviewQueue(userId));
+  } catch (error) {
+    console.error("Failed to load review queue", error);
+    return jsonError("We couldn't load your items. Please try again.", 500);
+  }
+}
 
 export async function POST(request: Request) {
   const userId = await getApiUserId();
@@ -21,7 +34,7 @@ export async function POST(request: Request) {
 
   const parsed = createItemSchema.safeParse(body);
   if (!parsed.success) {
-    return jsonError("Please fix the highlighted fields.", 400, fieldErrorsOf(parsed.error));
+    return jsonError("Please fix the highlighted fields.", 400, { fieldErrors: fieldErrorsOf(parsed.error) });
   }
   const { name, price, description, imagePublicId } = parsed.data;
 
