@@ -2,11 +2,11 @@
 
 Pause before you purchase. Snap a photo of something you want, wait 24 hours, then swipe right to buy or left to let it go, and see how much you've saved.
 
-**Stack:** Next.js 16 (App Router, Cache Components) · React 19 · TypeScript · Tailwind CSS v4 · MongoDB Atlas + Mongoose · Clerk · Cloudinary · Vercel
+**Stack:** Next.js 16 (App Router, Cache Components) · React 19 · TypeScript · Tailwind CSS v4 · MongoDB Atlas + Mongoose · Auth.js (NextAuth v5) · Cloudinary · Vercel
 
 ## Features
 
-- Sign up / sign in with Clerk.
+- Sign up / sign in with **Google** or **email and password** (Auth.js).
 - **Add an item** (`/upload`): add a photo (JPEG/PNG/WebP, ≤ 5 MB), name, price and an optional reason. The item becomes reviewable 24 hours later.
 - **Review** (`/review`): one card at a time. Swipe right or press **Buy**; swipe left or press **Do Not Buy**. The ← / → keys also work, and you can undo the most recent decision. Signed-in visitors to `/` land here.
 - **History** (`/history`): your Buy and Do Not Buy lists, the number reviewed, bought and skipped, and the total money saved.
@@ -17,7 +17,8 @@ Pause before you purchase. Snap a photo of something you want, wait 24 hours, th
 ## 1. Prerequisites
 
 - Node.js **20.9 or later** (Node 22 or 24 recommended)
-- Free accounts on [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register), [Clerk](https://dashboard.clerk.com/sign-up) and [Cloudinary](https://cloudinary.com/users/register_free)
+- Free accounts on [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register) and [Cloudinary](https://cloudinary.com/users/register_free)
+- A Google account, to create the OAuth client for "Continue with Google"
 
 ## 2. Install
 
@@ -25,28 +26,38 @@ Pause before you purchase. Snap a photo of something you want, wait 24 hours, th
 git clone <your-repo-url> consider
 cd consider
 npm install
-cp .env.example .env.local
 ```
 
-Then fill in `.env.local` as described below. `.env.local` is git-ignored; never commit real values.
+Then create `.env.local` in the project root with the variables below. `.env.local` is git-ignored; never commit real values.
 
 ## 3. Environment variables
 
 | Variable | Where it's used | Description |
 |---|---|---|
 | `MONGODB_URI` | server only | Atlas connection string |
-| `CLERK_SECRET_KEY` | server only | Clerk secret key (`sk_test_…` / `sk_live_…`) |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | browser | Clerk publishable key (`pk_test_…` / `pk_live_…`) |
-| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | browser | `/sign-in` |
-| `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | browser | `/sign-up` |
-| `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL` | browser | `/review`: where users go after signing in |
-| `NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL` | browser | `/review`: where users go after signing up |
+| `AUTH_SECRET` | server only | Encrypts Auth.js session cookies. Generate with `npx auth secret` or `openssl rand -base64 32`; use a different value per environment |
+| `AUTH_GOOGLE_ID` | server only | Google OAuth client ID |
+| `AUTH_GOOGLE_SECRET` | server only | Google OAuth client secret |
 | `CLOUDINARY_CLOUD_NAME` | server + build | Your Cloudinary cloud name |
 | `CLOUDINARY_API_KEY` | server only | Cloudinary API key |
 | `CLOUDINARY_API_SECRET` | server only | Cloudinary API secret |
 | `WAITING_PERIOD_SECONDS` | server only, optional | Overrides the 24-hour wait, in seconds (`0` = items are reviewable immediately). Useful for local testing or a demo deployment. Leave it unset for the real 24-hour pause. |
+| `AUTH_TRUST_HOST` | server only, optional | Set to `true` only when running `next start` yourself (not on Vercel, which is trusted automatically) |
 
-Only `NEXT_PUBLIC_*` values reach the browser. Everything else is read only in `server-only` modules (`lib/mongodb.ts`, `lib/cloudinary.ts`).
+Example `.env.local`:
+
+```bash
+MONGODB_URI=
+AUTH_SECRET=
+AUTH_GOOGLE_ID=
+AUTH_GOOGLE_SECRET=
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+# WAITING_PERIOD_SECONDS=1
+```
+
+No variable is exposed to the browser. Secrets are read only on the server (`auth.ts`, `lib/mongodb.ts`, `lib/cloudinary.ts`). In a dashboard like Vercel, enter **only the value**, never `NAME=value`.
 
 ## 4. MongoDB Atlas setup
 
@@ -64,12 +75,26 @@ Only `NEXT_PUBLIC_*` values reach the browser. Everything else is read only in `
 
 Collections (`items`, `usersettings`) and their indexes are created automatically on first use.
 
-## 5. Clerk setup (development)
+## 5. Authentication setup (Auth.js)
 
-1. In the [Clerk dashboard](https://dashboard.clerk.com) create an application. Choose sign-in methods such as email + password or Google.
-2. **Configure → API Keys**: use the **copy** buttons for the Publishable key (`pk_test_…`) and the Secret key (`sk_test_…`).
-   > Copy the secret key with the copy button. If you copy the masked `••••` text, sign-in will loop back to the sign-in page.
-3. Put them in `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`, and keep the four `NEXT_PUBLIC_CLERK_*_URL` values from `.env.example`.
+Users can sign in with Google or with an email and password. Both end up with the same kind of account: a document in the `users` collection, whose `_id` owns their items and settings.
+
+### Session secret
+Run `npx auth secret` (or `openssl rand -base64 32`) and set the result as `AUTH_SECRET`. Changing it signs everyone out.
+
+### Google OAuth client
+1. Open the [Google Cloud console](https://console.cloud.google.com/) and create (or pick) a project.
+2. **APIs & Services → OAuth consent screen**: choose **External**, fill in the app name and your support email, and add the scopes `openid`, `email` and `profile`. While the app is in *Testing*, add your own Google account under **Test users**.
+3. **APIs & Services → Credentials → Create credentials → OAuth client ID** → *Web application*.
+   - **Authorized JavaScript origins:** `http://localhost:3000` and, later, `https://<your-domain>`
+   - **Authorized redirect URIs:** `http://localhost:3000/api/auth/callback/google` and, later, `https://<your-domain>/api/auth/callback/google`
+4. Copy the **Client ID** into `AUTH_GOOGLE_ID` and the **Client secret** into `AUTH_GOOGLE_SECRET`.
+
+### How accounts work
+- **Email/password:** `/sign-up` posts to `POST /api/register`. Emails are lowercased; passwords need 8+ characters and are stored only as a bcrypt hash (cost 12). The new user is signed in straight away.
+- **Sign-in errors** are always "Incorrect email or password.", whether the email or the password was wrong. Unknown emails take as long to check as real ones.
+- **Google:** the first Google sign-in creates the user. A Google email must be verified by Google.
+- **Same email, two methods:** accounts are **not linked**. If an email already has a password account, Google sign-in with that email is refused (and vice versa for registration). Since emails aren't verified yet, linking would let someone pre-register your address and share your account.
 
 ## 6. Cloudinary setup
 
@@ -96,14 +121,14 @@ The first `npm test` downloads a MongoDB binary for the in-memory database (abou
 
 **Manual walkthrough:**
 1. (Optional) set `WAITING_PERIOD_SECONDS=1` in `.env.local` so new items are reviewable straight away, then restart `npm run dev`.
-2. Sign up, then go to **Add item**. Pick a photo, enter a name and price, and submit. You'll see when the item becomes available.
+2. Sign up (with Google or email/password), then go to **Add item**. Pick a photo, enter a name and price, and submit. You'll see when the item becomes available.
    - The item appears in Atlas under `items` with `status: "pending"`, `decision: null` and `availableAt` 24 h after `createdAt` (UTC).
    - The photo appears in Cloudinary under `mindful-shopping/<your user id>/`.
 3. Open **Review**. Swipe or use the buttons, and try **Undo**.
 4. Open **History** to check the totals and money saved.
 5. In the avatar menu, open **Income settings** and add an hourly rate or salary. The review cards and history now show work time.
 
-**What `npm test` covers** (`tests/`, 71 tests):
+**What `npm test` covers** (`tests/`, 111 tests):
 - **Validation:** item fields, prices, image type and size, ObjectIds, decision values, income settings.
 - **Work-time maths.**
 - **Review logic** (against a real, in-memory MongoDB):
@@ -111,7 +136,14 @@ The first `npm test` downloads a MongoDB binary for the in-memory database (abou
   - decisions are atomic and can't be overwritten
   - exactly 1 of 10 simultaneous decisions wins
   - undo works, and history totals are correct
-- **The real API route handlers, with Clerk mocked:**
+- **Authentication** (`tests/auth.test.ts`):
+  - registration lowercases emails, stores only a bcrypt hash and never returns it
+  - duplicate emails (any casing) and Google-account emails are rejected
+  - field validation (email, 8+ char password, matching confirmation)
+  - wrong password and unknown email give the same result; Google-only accounts can't use a password
+  - Google sign-in creates/reuses the user, refuses unverified emails, never links to a password account, and puts the MongoDB user id in the session
+  - `callbackUrl` can't redirect to another site
+- **The real API route handlers, with the Auth.js session mocked:**
   - every route returns 401 when signed out
   - users can't decide, undo or see another user's items, even by putting a `userId` in the request
   - client-sent `userId`/`status`/`availableAt`/`imageUrl` are ignored
@@ -123,8 +155,7 @@ The first `npm test` downloads a MongoDB binary for the in-memory database (abou
 1. Push the repository to GitHub, GitLab or Bitbucket.
 2. In Vercel, choose **Add New → Project** and import the repo. The framework preset is **Next.js**; keep the default build settings.
 3. **Settings → Environment Variables**: add every variable from the table above. Only add `WAITING_PERIOD_SECONDS` if you want a shorter wait (e.g. `0` for a demo); without it, items wait 24 hours.
-   - **Production** environment: use your Clerk **production** keys (see below).
-   - **Preview** environment: you can use the development keys.
+   - Use a **new** `AUTH_SECRET` for production, not your local one.
    - `CLOUDINARY_CLOUD_NAME` is also read at build time, to restrict image optimization to your own cloud.
 4. Make sure Atlas **Network Access** allows Vercel (step 4.3).
 5. Deploy. After adding or changing environment variables, **redeploy**; they only apply to new deployments.
@@ -134,33 +165,26 @@ Already set up for Vercel:
 - **Security headers:** `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, HSTS (`next.config.ts`).
 - **Uploads:** they go straight from the browser to Cloudinary, so Vercel's ~4.5 MB request-body limit doesn't apply.
 
-## 9. Clerk production setup and redirects
+## 9. Google sign-in in production
 
-Clerk development keys (`pk_test_`/`sk_test_`) are for development only and show a "Development mode" badge. For a real launch:
+1. In the Google Cloud console, open your OAuth client and add your production URLs:
+   - **Authorized JavaScript origins:** `https://<your-domain>` (for example `https://consider.vercel.app`)
+   - **Authorized redirect URIs:** `https://<your-domain>/api/auth/callback/google`
 
-1. **Create a production instance.** In the Clerk dashboard, switch the instance toggle from *Development* to *Production* and create the production instance (you can clone the development settings).
-2. **Use your own domain.** Clerk production instances need a domain you own; a `*.vercel.app` domain can't be used.
-   - Add the domain to your Vercel project (**Settings → Domains**).
-   - In Clerk, open **Configure → Domains**, enter that domain, and add the **DNS records** (CNAMEs) Clerk lists at your DNS provider.
-   - Wait until Clerk shows the domain as verified and SSL as issued.
-3. **Set the paths and redirects.** In Clerk, under **Configure → Paths**, set:
-   - Sign-in page: `https://<your-domain>/sign-in` (the app's own page, not the Account Portal)
-   - Sign-up page: `https://<your-domain>/sign-up`
-   - After sign-in and after sign-up fallback: `/review`
-   - After sign-out: `/`
+   Each Vercel preview URL is different, so Google sign-in only works on the URLs you list. Email/password sign-in works everywhere.
+2. **OAuth consent screen:** while it's in *Testing*, only listed test users can sign in with Google. Choose **Publish app** to open it to everyone (Google may ask for verification if you request more than the basic scopes).
+3. In Vercel, set `AUTH_SECRET`, `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` for **Production**, then redeploy.
+4. Check: open `https://<your-domain>/sign-in`, choose **Continue with Google**, and confirm you land on `/review`. Then sign out from the avatar menu.
 
-   Also set the matching env vars in Vercel's **Production** environment: `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up` and both `…_FALLBACK_REDIRECT_URL=/review`. Even without them, a signed-in user who lands on `/` is sent to `/review` by `proxy.ts`.
-4. **Social sign-in.** If you use social providers (Google, etc.) in production, enter your own OAuth client ID and secret for each one under **Configure → SSO connections**; Clerk's shared dev credentials don't work in production. Add the redirect URI Clerk shows to each provider's console.
-5. **Production keys in Vercel.** Copy the production `pk_live_…` and `sk_live_…` keys into Vercel's **Production** environment variables, then redeploy.
-6. **Check.** Open `https://<your-domain>`, sign up, and confirm you land on `/review`. Production users are a separate user base from development users.
+If you previously used Clerk, delete the old `CLERK_*` and `NEXT_PUBLIC_CLERK_*` variables from Vercel; they're no longer used.
 
 ---
 
 ## How it works
 
 ### Security model
-- **Authentication:** `proxy.ts` (Next 16's name for middleware) redirects signed-out visitors away from private pages. Every page and API route **also** checks the Clerk session on the server (`lib/auth.ts`), so the redirect is never the only protection. Signed-out API calls get a JSON `401`.
-- **Ownership:** every MongoDB query and update includes the `userId` from the Clerk session. A `userId` sent by the client is never read. Another user's item answers exactly like a missing one (`404`).
+- **Authentication:** Auth.js with JWT sessions in an httpOnly cookie. `proxy.ts` (Next 16's name for middleware) redirects signed-out visitors away from `/upload`, `/review`, `/history` and `/settings`. Every page and API route **also** checks the session on the server (`lib/auth.ts`), so the redirect is never the only protection. Signed-out API calls get a JSON `401`.
+- **Ownership:** every MongoDB query and update includes the `userId` from the Auth.js session (`session.user.id`, the MongoDB `users._id`). A `userId` sent by the client is never read. Another user's item answers exactly like a missing one (`404`).
 - **Decisions** are a single atomic `findOneAndUpdate` that matches only when the item belongs to the user, is `pending`, and `availableAt <= now`. Double taps, two tabs or replayed requests can succeed at most once (`409` afterwards).
 - **Validation:** Zod schemas in `lib/validations.ts` are shared by the forms and the API, and unknown fields are stripped. ObjectIds and `"buy" | "skip"` are validated before any query runs.
 
@@ -176,6 +200,8 @@ There is no cron job. Each item stores `availableAt = now + 24h` as a BSON `Date
 ### API
 | Method | Route | Purpose |
 |---|---|---|
+| `GET` / `POST` | `/api/auth/*` | Auth.js (sign-in, callbacks, sign-out) |
+| `POST` | `/api/register` | Create an email/password account |
 | `POST` | `/api/uploads/signature` | Signed parameters for a direct Cloudinary upload |
 | `POST` | `/api/items` | Create an item after the upload |
 | `GET` | `/api/items` | Items ready for review, plus when the next one is ready |
@@ -189,16 +215,19 @@ There is no cron job. Each item stores `availableAt = now + 24h` as a BSON `Date
 app/                    pages: / (landing), upload, review, history, settings, sign-in, sign-up
 app/api/                route handlers (table above)
 components/             UI (ItemUploadForm, ReviewDeck, SwipeCard, HistoryView, IncomeSettingsForm, …)
-lib/auth.ts             server-side Clerk helpers
+auth.ts                 Auth.js config: Google + Credentials providers, callbacks
+lib/auth.ts             server-side session helpers (requireUserId, getApiUserId)
+lib/auth-actions.ts     server actions: Google sign-in, password sign-in, sign-out
+lib/users.ts            registration, password check, Google account lookup
 lib/mongodb.ts          cached Mongoose connection (serverless-safe)
 lib/cloudinary.ts       server-only upload signing, lookup, delete
 lib/items.ts            review queue, decisions, undo, history (all userId-scoped)
 lib/settings.ts         income settings (userId-scoped)
 lib/validations.ts      Zod schemas shared by forms and API
 lib/income.ts           price → work time
-models/                 Mongoose models: Item, UserSettings
+models/                 Mongoose models: User, Item, UserSettings
 types/                  shared types
-proxy.ts                Clerk middleware + signed-in redirect from /
+proxy.ts                protects private pages; sends signed-in users from / to /review
 tests/                  Vitest suites
 ```
 
@@ -207,3 +236,8 @@ tests/                  Vitest suites
 - There's no rate limiting. A signed-in user could request many upload signatures. For a public launch, add rate limiting (e.g. Vercel Firewall rules or Upstash) and consider a Cloudinary upload quota.
 - Creating an item uses one Cloudinary Admin API call (the free plan allows about 500 per hour).
 - The internal storage names (`mindful-shopping` database default and Cloudinary folder) predate the rename to Consider. They're kept so existing data keeps working.
+
+### Future improvements
+- **Password reset** ("forgot password") by email. Not implemented yet.
+- **Email verification** for email/password sign-ups. Not implemented yet; once it exists, Google and password accounts with the same verified email could be linked safely.
+- **Rate limiting** sign-in and registration attempts, to slow down password guessing.

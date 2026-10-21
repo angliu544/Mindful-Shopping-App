@@ -1,18 +1,19 @@
 import "server-only";
-import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 
-/**
- * For Server Components and Server Actions: returns the Clerk user ID or
- * redirects to sign-in. Never accept a userId from the client.
- */
-export async function requireUserId(): Promise<string> {
-  const { userId, redirectToSignIn } = await auth();
-  if (!userId) return redirectToSignIn();
-  return userId;
+/** The signed-in user's id (our MongoDB User id) from the Auth.js session, or null. */
+export async function getApiUserId(): Promise<string | null> {
+  const session = await auth();
+  return session?.user?.id ?? null;
 }
 
-/** For Route Handlers: returns the Clerk user ID, or null so the caller can respond 401. */
-export async function getApiUserId(): Promise<string | null> {
-  const { userId } = await auth();
+/**
+ * For Server Components and Server Actions: returns the user id or redirects to
+ * sign-in. Never accept a userId from the client.
+ */
+export async function requireUserId(): Promise<string> {
+  const userId = await getApiUserId();
+  if (!userId) redirect("/sign-in");
   return userId;
 }

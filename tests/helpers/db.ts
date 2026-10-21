@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { afterAll, beforeAll, beforeEach } from "vitest";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Item } from "@/models/Item";
+import { User } from "@/models/User";
 import { UserSettings } from "@/models/UserSettings";
 
 /** Starts an in-memory MongoDB for the current test file and clears it between tests. */
@@ -13,11 +14,11 @@ export function setupTestDatabase() {
     server = await MongoMemoryServer.create();
     process.env.MONGODB_URI = server.getUri("consider-test");
     await connectToDatabase();
-    await Promise.all([Item.syncIndexes(), UserSettings.syncIndexes()]);
+    await Promise.all([Item.syncIndexes(), UserSettings.syncIndexes(), User.syncIndexes()]);
   });
 
   beforeEach(async () => {
-    await Promise.all([Item.deleteMany({}), UserSettings.deleteMany({})]);
+    await Promise.all([Item.deleteMany({}), UserSettings.deleteMany({}), User.deleteMany({})]);
   });
 
   afterAll(async () => {

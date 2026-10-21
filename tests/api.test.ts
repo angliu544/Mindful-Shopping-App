@@ -5,8 +5,8 @@ import { createItem, setupTestDatabase } from "./helpers/db";
 // The signed-in user is whatever this mock says; the route handlers must take
 // the user from here, never from the request.
 const session = vi.hoisted(() => ({ userId: null as string | null }));
-vi.mock("@clerk/nextjs/server", () => ({
-  auth: async () => ({ userId: session.userId, redirectToSignIn: () => { throw new Error("redirect"); } }),
+vi.mock("@/auth", () => ({
+  auth: async () => (session.userId ? { user: { id: session.userId }, expires: "2099-01-01T00:00:00Z" } : null),
 }));
 
 // Cloudinary is mocked: these tests are about who can do what, not about uploads.

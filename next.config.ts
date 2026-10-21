@@ -20,6 +20,8 @@ const nextConfig: NextConfig = {
         hostname: "res.cloudinary.com",
         pathname: process.env.CLOUDINARY_CLOUD_NAME ? `/${process.env.CLOUDINARY_CLOUD_NAME}/**` : "/**",
       },
+      // Google profile photos, shown in the user menu.
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
     ],
   },
   async headers() {

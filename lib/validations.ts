@@ -115,3 +115,39 @@ export const incomeSettingsSchema = z
   }));
 
 export type IncomeSettingsInput = z.infer<typeof incomeSettingsSchema>;
+
+const emailSchema = z
+  .string({ error: "Please enter your email address." })
+  .trim()
+  .toLowerCase()
+  .max(254, "That email address is too long.")
+  .pipe(z.email("Please enter a valid email address."));
+
+// bcrypt only uses the first 72 bytes of a password, so longer ones are refused.
+const MAX_PASSWORD_BYTES = 72;
+
+export const registerSchema = z
+  .object({
+    name: z
+      .string({ error: "Please enter your name." })
+      .trim()
+      .min(1, "Please enter your name.")
+      .max(100, "Keep your name under 100 characters."),
+    email: emailSchema,
+    password: z
+      .string({ error: "Please choose a password." })
+      .min(8, "Password must be at least 8 characters.")
+      .refine((p) => new TextEncoder().encode(p).length <= MAX_PASSWORD_BYTES, "Password is too long (72 characters max)."),
+    confirmPassword: z.string({ error: "Please confirm your password." }),
+  })
+  .refine((v) => v.password === v.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "Passwords don't match.",
+  });
+
+export type RegisterInput = z.infer<typeof registerSchema>;
+
+export const signInSchema = z.object({
+  email: emailSchema,
+  password: z.string({ error: "Please enter your password." }).min(1, "Please enter your password.").max(200),
+});

@@ -5,7 +5,7 @@ import { Item, type ItemDocument } from "@/models/Item";
 import type { ApiErrorCode, HistoryResponse, ReviewQueueResponse } from "@/types/api";
 import type { ItemDecision, ItemDTO } from "@/types/item";
 
-// Every query in this file is scoped by the caller's Clerk userId, which must
+// Every query in this file is scoped by the caller's Auth.js userId, which must
 // come from the server-side session, never from the request body.
 
 const REVIEW_QUEUE_LIMIT = 100;

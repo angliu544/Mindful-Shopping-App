@@ -4,7 +4,7 @@ import type { IncomeSettingsInput } from "@/lib/validations";
 import { UserSettings, type UserSettingsRecord } from "@/models/UserSettings";
 import type { IncomeSettingsDTO } from "@/types/settings";
 
-// Scoped by the caller's Clerk userId from the server-side session.
+// Scoped by the caller's userId from the server-side Auth.js session.
 
 function toDTO(doc: Pick<UserSettingsRecord, "incomeType" | "incomeAmount" | "hoursPerWeek">): IncomeSettingsDTO {
   return {

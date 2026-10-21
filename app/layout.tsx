@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Fraunces, Geist } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
 import Navigation from "@/components/Navigation";
 import "./globals.css";
 
@@ -26,10 +25,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <ClerkProvider>
-          <Navigation />
-          <main className="flex-1">{children}</main>
-        </ClerkProvider>
+        <Navigation />
+        <main className="flex-1">{children}</main>
       </body>
     </html>
   );
