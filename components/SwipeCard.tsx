@@ -17,7 +17,8 @@ type Props = {
   /** When set, the price is also shown as time worked. */
   income: IncomeSettingsDTO | null;
   /** Set while the card animates off-screen after a decision. */
-  exitDirection: ItemDecision | null;
+  /** "later" = Need More Time: the card floats away instead of swiping. */
+  exitDirection: ItemDecision | "later" | null;
   disabled: boolean;
   onDecision: (decision: ItemDecision) => void;
 };
@@ -52,7 +53,9 @@ export default function SwipeCard({ item, income, exitDirection, disabled, onDec
 
   const workHours = workHoursFor(item.price, income);
   const offset = exitDirection ? 0 : dx;
-  const transform = exitDirection
+  const transform = exitDirection === "later"
+    ? "translateY(-8%) scale(0.92)"
+    : exitDirection
     ? `translateX(${exitDirection === "buy" ? 130 : -130}%) rotate(${exitDirection === "buy" ? 16 : -16}deg)`
     : `translateX(${offset}px) rotate(${offset / 20}deg)`;
   const buyOpacity = exitDirection === "buy" ? 1 : Math.min(Math.max(offset / SWIPE_THRESHOLD, 0), 1);
@@ -74,7 +77,7 @@ export default function SwipeCard({ item, income, exitDirection, disabled, onDec
       }`}
       data-testid="swipe-card"
     >
-      <div className="relative aspect-[4/5] max-h-[46svh] w-full bg-sage-50 sm:aspect-[4/3]">
+      <div className="relative aspect-[4/5] max-h-[40svh] w-full bg-sage-50 sm:aspect-[4/3]">
         <Image
           src={item.imageUrl}
           alt={item.name}

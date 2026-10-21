@@ -134,3 +134,25 @@ export async function getHistory(userId: string): Promise<HistoryResponse> {
     truncated: items.length > HISTORY_LIMIT,
   };
 }
+
+/**
+ * "Need More Time": pushes a ready item back by one waiting period (24 hours
+ * unless WAITING_PERIOD_SECONDS says otherwise). Like a decision, it only
+ * matches the user's own pending, already-available item, so a double tap
+ * can't stack extra days.
+ */
+export async function snoozeItem(userId: string, itemId: string): Promise<ItemMutationResult> {
+  await connectToDatabase();
+  const now = new Date();
+
+  const item = await Item.findOneAndUpdate(
+    { _id: itemId, userId, status: "pending", availableAt: { $lte: now } },
+    { $set: { availableAt: new Date(now.getTime() + getWaitingPeriodMs()) } },
+    { returnDocument: "after" },
+  );
+  if (item) return { ok: true, item: toItemDTO(item) };
+
+  const existing = await Item.findOne({ _id: itemId, userId }).select("status");
+  if (!existing) return { ok: false, reason: "not_found" };
+  return { ok: false, reason: existing.status === "reviewed" ? "already_reviewed" : "not_ready" };
+}

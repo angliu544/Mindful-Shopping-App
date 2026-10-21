@@ -29,6 +29,13 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const decisionLabel: Record<ItemDecision, string> = { buy: "Buy", skip: "Do not buy" };
 
+/** The most recent action, shown under the deck. Only decisions can be undone. */
+type LastAction =
+  | { type: "decision"; item: ItemDTO; decision: ItemDecision }
+  | { type: "snooze"; item: ItemDTO; availableAt: string };
+
+const earlier = (a: string | null, b: string) => (a && a < b ? a : b);
+
 export default function ReviewDeck({
   initial,
   income,
@@ -38,11 +45,11 @@ export default function ReviewDeck({
 }) {
   const [items, setItems] = useState<ItemDTO[]>(initial.items);
   const [nextAvailableAt, setNextAvailableAt] = useState(initial.nextAvailableAt);
-  const [exit, setExit] = useState<{ id: string; decision: ItemDecision } | null>(null);
+  const [exit, setExit] = useState<{ id: string; direction: ItemDecision | "later" } | null>(null);
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastDecision, setLastDecision] = useState<{ item: ItemDTO; decision: ItemDecision } | null>(null);
+  const [lastAction, setLastAction] = useState<LastAction | null>(null);
   const [announcement, setAnnouncement] = useState("");
   // A ref, not state, so two clicks in the same frame can't both get through.
   const lockRef = useRef(false);
@@ -56,7 +63,7 @@ export default function ReviewDeck({
       lockRef.current = true;
       setBusy(true);
       setError(null);
-      setExit({ id: item.id, decision });
+      setExit({ id: item.id, direction: decision });
 
       const [result] = await Promise.all([
         request<ItemResponse>(`/api/items/${item.id}/decision`, {
@@ -69,12 +76,12 @@ export default function ReviewDeck({
 
       if (result.ok) {
         setItems((queue) => queue.filter((i) => i.id !== item.id));
-        setLastDecision({ item, decision });
+        setLastAction({ type: "decision", item, decision });
         setAnnouncement(`${item.name}: ${decisionLabel[decision]}.`);
       } else if (result.code === "already_reviewed" || result.code === "not_found") {
         // Decided elsewhere (e.g. another tab) or gone: drop it from this queue.
         setItems((queue) => queue.filter((i) => i.id !== item.id));
-        setLastDecision(null);
+        setLastAction(null);
         setError(result.message);
       } else {
         setError(result.message);
@@ -87,8 +94,42 @@ export default function ReviewDeck({
     [items],
   );
 
+  /** "Need More Time": the item leaves the deck and comes back after another wait. */
+  async function needMoreTime() {
+    const item = items[0];
+    if (!item || lockRef.current) return;
+    lockRef.current = true;
+    setBusy(true);
+    setError(null);
+    setExit({ id: item.id, direction: "later" });
+
+    const [result] = await Promise.all([
+      request<ItemResponse>(`/api/items/${item.id}/snooze`, { method: "POST" }),
+      wait(EXIT_MS),
+    ]);
+
+    if (result.ok) {
+      const { availableAt } = result.data.item;
+      setItems((queue) => queue.filter((i) => i.id !== item.id));
+      setNextAvailableAt((next) => earlier(next, availableAt));
+      setLastAction({ type: "snooze", item, availableAt });
+      setAnnouncement(`${item.name} will come back later.`);
+    } else if (result.code) {
+      // Already decided or snoozed elsewhere, or gone: it no longer belongs here.
+      setItems((queue) => queue.filter((i) => i.id !== item.id));
+      setError(result.message);
+    } else {
+      setError(result.message);
+    }
+
+    setExit(null);
+    setBusy(false);
+    lockRef.current = false;
+  }
+
   async function undo() {
-    if (!lastDecision || lockRef.current) return;
+    if (lastAction?.type !== "decision" || lockRef.current) return;
+    const lastDecision = lastAction;
     lockRef.current = true;
     setBusy(true);
     setError(null);
@@ -103,7 +144,7 @@ export default function ReviewDeck({
     } else {
       setError(result.message);
     }
-    setLastDecision(null);
+    setLastAction(null);
     setBusy(false);
     lockRef.current = false;
   }
@@ -164,26 +205,35 @@ export default function ReviewDeck({
               key={current.id}
               item={current}
               income={income}
-              exitDirection={exit?.id === current.id ? exit.decision : null}
+              exitDirection={exit?.id === current.id ? exit.direction : null}
               disabled={busy}
               onDecision={decide}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-2">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-2 pt-2 sm:gap-3">
             <button
               type="button"
               onClick={() => decide("skip")}
               disabled={busy}
-              className="rounded-full border-2 border-ink-muted/30 bg-paper px-4 py-3 font-medium text-ink hover:bg-sage-50 disabled:opacity-60"
+              className="rounded-full border-2 border-ink-muted/30 bg-paper px-3 py-3 font-medium leading-tight text-ink hover:bg-sage-50 disabled:opacity-60 sm:px-4"
             >
               Do Not Buy
             </button>
             <button
               type="button"
+              onClick={needMoreTime}
+              disabled={busy}
+              className="rounded-full border-2 border-dashed border-sage-200 bg-cream px-3 py-2 text-sm font-medium leading-tight text-sage-700 hover:bg-sage-50 disabled:opacity-60 sm:px-4"
+            >
+              Need More
+              <br className="sm:hidden" /> Time
+            </button>
+            <button
+              type="button"
               onClick={() => decide("buy")}
               disabled={busy}
-              className="rounded-full bg-sage-600 px-4 py-3 font-medium text-white hover:bg-sage-700 disabled:opacity-60"
+              className="rounded-full bg-sage-600 px-3 py-3 font-medium leading-tight text-white hover:bg-sage-700 disabled:opacity-60 sm:px-4"
             >
               Buy
             </button>
@@ -224,11 +274,18 @@ export default function ReviewDeck({
         </EmptyState>
       )}
 
-      {lastDecision && (
+      {lastAction?.type === "snooze" && (
+        <p className="text-center text-sm text-ink-muted" data-testid="snooze-notice">
+          <span className="font-medium text-ink">{lastAction.item.name}</span> will be back{" "}
+          <LocalDate iso={lastAction.availableAt} format="dateTime" />.
+        </p>
+      )}
+
+      {lastAction?.type === "decision" && (
         <div className="flex items-center justify-center gap-2 text-sm text-ink-muted">
           <span>
-            Marked <span className="font-medium text-ink">{lastDecision.item.name}</span> as{" "}
-            {decisionLabel[lastDecision.decision].toLowerCase()}.
+            Marked <span className="font-medium text-ink">{lastAction.item.name}</span> as{" "}
+            {decisionLabel[lastAction.decision].toLowerCase()}.
           </span>
           <button
             type="button"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent } from "react";
 import Link from "next/link";
 import { ALLOWED_IMAGE_TYPES, ITEM_DESCRIPTION_MAX_LENGTH, ITEM_NAME_MAX_LENGTH } from "@/lib/constants";
 import { describeUploadError } from "@/lib/upload-errors";
@@ -109,19 +109,73 @@ export default function ItemUploadForm() {
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
   }, []);
 
-  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
-    const next = e.target.files?.[0] ?? null;
+  /** Shared by the file picker and drag-and-drop. */
+  function selectFile(next: File | null) {
     const error = next ? validateImageFile(next) : null;
     setFieldErrors((prev) => ({ ...prev, image: error ?? undefined }));
     if (error) {
       setFile(null);
       replacePreview(null);
-      e.target.value = "";
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
     setFile(next);
     replacePreview(next);
   }
+
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    selectFile(e.target.files?.[0] ?? null);
+  }
+
+  // Counts enter/leave pairs so moving over the preview image doesn't flicker the highlight.
+  const dragDepth = useRef(0);
+  const [dragging, setDragging] = useState(false);
+  const isFileDrag = (e: DragEvent) => Array.from(e.dataTransfer.types).includes("Files");
+
+  function handleDragEnter(e: DragEvent<HTMLLabelElement>) {
+    if (!isFileDrag(e)) return;
+    e.preventDefault();
+    dragDepth.current += 1;
+    if (!busy) setDragging(true);
+  }
+
+  function handleDragOver(e: DragEvent<HTMLLabelElement>) {
+    if (!isFileDrag(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = busy ? "none" : "copy";
+  }
+
+  function handleDragLeave() {
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setDragging(false);
+  }
+
+  function handleDrop(e: DragEvent<HTMLLabelElement>) {
+    e.preventDefault();
+    dragDepth.current = 0;
+    setDragging(false);
+    if (busy) return;
+    const dropped = e.dataTransfer.files?.[0];
+    if (!dropped) {
+      // e.g. an image dragged from another web page arrives as a link, not a file.
+      setFieldErrors((prev) => ({ ...prev, image: "Drop a photo saved on your device, or tap to choose one." }));
+      return;
+    }
+    selectFile(dropped);
+  }
+
+  // A file dropped beside the box would otherwise make the browser open it and leave the form.
+  useEffect(() => {
+    const block = (e: globalThis.DragEvent) => {
+      if (e.dataTransfer && Array.from(e.dataTransfer.types).includes("Files")) e.preventDefault();
+    };
+    window.addEventListener("dragover", block);
+    window.addEventListener("drop", block);
+    return () => {
+      window.removeEventListener("dragover", block);
+      window.removeEventListener("drop", block);
+    };
+  }, []);
 
   function resetForm() {
     setFile(null);
@@ -232,8 +286,17 @@ export default function ItemUploadForm() {
         />
         <label
           htmlFor={ids.image}
-          className={`mt-2 flex aspect-square w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-dashed bg-paper text-center transition-colors hover:bg-sage-50 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-sage-600 sm:aspect-[4/3] ${
-            fieldErrors.image ? "border-red-400" : "border-sage-200"
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          data-testid="photo-dropzone"
+          className={`relative mt-2 flex aspect-square w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-dashed text-center transition-colors hover:bg-sage-50 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-sage-600 sm:aspect-[4/3] ${
+            dragging
+              ? "border-sage-600 bg-sage-50"
+              : fieldErrors.image
+                ? "border-red-400 bg-paper"
+                : "border-sage-200 bg-paper"
           }`}
         >
           {previewUrl ? (
@@ -242,12 +305,20 @@ export default function ItemUploadForm() {
           ) : (
             <span className="px-6 text-ink-muted">
               <span className="block font-medium text-sage-700">Choose a photo</span>
-              <span className="mt-1 block text-sm">Tap to select an image</span>
+              <span className="mt-1 block text-sm">Drag one here, or tap to select</span>
+            </span>
+          )}
+          {dragging && (
+            <span
+              aria-hidden
+              className="absolute inset-0 flex items-center justify-center bg-sage-50/90 font-medium text-sage-700"
+            >
+              Drop the photo here
             </span>
           )}
         </label>
         <p id={`${ids.image}-hint`} className="mt-2 text-sm text-ink-muted">
-          JPEG, PNG, or WebP, up to 5 MB.{file && ` Selected: ${file.name}. Tap the photo to change it.`}
+          JPEG, PNG, or WebP, up to 5 MB.{file && ` Selected: ${file.name}. Tap or drop another photo to change it.`}
         </p>
         {fieldErrors.image && (
           <p id={`${ids.image}-error`} className="mt-1 text-sm text-red-700">

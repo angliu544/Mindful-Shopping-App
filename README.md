@@ -7,8 +7,8 @@ Pause before you purchase. Snap a photo of something you want, wait 24 hours, th
 ## Features
 
 - Sign up / sign in with **Google** or **email and password** (Auth.js).
-- **Add an item** (`/upload`): add a photo (JPEG/PNG/WebP, ≤ 5 MB), name, price and an optional reason. The item becomes reviewable 24 hours later.
-- **Review** (`/review`): one card at a time. Swipe right or press **Buy**; swipe left or press **Do Not Buy**. The ← / → keys also work, and you can undo the most recent decision. Signed-in visitors to `/` land here.
+- **Add an item** (`/upload`): add a photo (JPEG/PNG/WebP, ≤ 5 MB) by dragging it onto the photo box or tapping to choose one, plus a name, price and an optional reason. The item becomes reviewable 24 hours later.
+- **Review** (`/review`): one card at a time. Swipe right or press **Buy**; swipe left or press **Do Not Buy**; or press **Need More Time** to send the card back for another day (one waiting period) without deciding. The ← / → keys also work, and you can undo the most recent decision. Signed-in visitors to `/` land here.
 - **History** (`/history`): your Buy and Do Not Buy lists, the number reviewed, bought and skipped, and the total money saved.
 - **Income settings** (`/settings`, also in the avatar menu): enter an hourly rate or a yearly salary. Cards and savings are then also shown as time worked (e.g. "≈ 3 h 5 min of work").
 
@@ -207,6 +207,7 @@ There is no cron job. Each item stores `availableAt = now + 24h` as a BSON `Date
 | `GET` | `/api/items` | Items ready for review, plus when the next one is ready |
 | `POST` | `/api/items/:id/decision` | `{ "decision": "buy" \| "skip" }` |
 | `DELETE` | `/api/items/:id/decision` | Undo a decision |
+| `POST` | `/api/items/:id/snooze` | Need More Time: the item comes back after another waiting period |
 | `GET` | `/api/history` | Reviewed items and totals |
 | `GET` / `PUT` / `DELETE` | `/api/settings` | Income settings |
 
