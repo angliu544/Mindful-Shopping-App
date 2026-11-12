@@ -2,6 +2,7 @@ import "server-only";
 import { WAITING_PERIOD_MS } from "@/lib/constants";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Item, type ItemDocument } from "@/models/Item";
+import type { ReflectionResult } from "@/lib/reflection";
 import type { ApiErrorCode, HistoryResponse, ReviewQueueResponse } from "@/types/api";
 import type { ItemDecision, ItemDTO } from "@/types/item";
 
@@ -39,6 +40,14 @@ export function toItemDTO(doc: ItemDocument): ItemDTO {
     status: doc.status,
     decision: doc.decision,
     decidedAt: doc.decidedAt ? doc.decidedAt.toISOString() : null,
+    reflection:
+      doc.reflectionCompleted && doc.reflectionScore != null && doc.reflectionCompletedAt
+        ? {
+            score: doc.reflectionScore,
+            responses: doc.reflectionResponses.map(({ question, answer, score }) => ({ question, answer, score })),
+            completedAt: doc.reflectionCompletedAt.toISOString(),
+          }
+        : null,
     createdAt: doc.createdAt.toISOString(),
   };
 }
@@ -68,19 +77,34 @@ export type ItemMutationResult =
 /**
  * Records a decision in a single atomic update that only matches when the item
  * belongs to the user, is still pending, and is already available. Concurrent
- * or repeated requests can therefore succeed at most once.
+ * or repeated requests can therefore succeed at most once. A completed
+ * reflection (already resolved and scored on the server) is saved in the same
+ * update, so it can never be attached to another user's item.
  */
 export async function decideItem(
   userId: string,
   itemId: string,
   decision: ItemDecision,
+  reflection?: ReflectionResult,
 ): Promise<ItemMutationResult> {
   await connectToDatabase();
   const now = new Date();
 
   const item = await Item.findOneAndUpdate(
     { _id: itemId, userId, status: "pending", availableAt: { $lte: now } },
-    { $set: { status: "reviewed", decision, decidedAt: now } },
+    {
+      $set: {
+        status: "reviewed",
+        decision,
+        decidedAt: now,
+        ...(reflection && {
+          reflectionResponses: reflection.responses,
+          reflectionScore: reflection.score,
+          reflectionCompleted: true,
+          reflectionCompletedAt: now,
+        }),
+      },
+    },
     { returnDocument: "after" },
   );
   if (item) return { ok: true, item: toItemDTO(item) };
@@ -91,12 +115,22 @@ export async function decideItem(
   return { ok: false, reason: existing.status === "reviewed" ? "already_reviewed" : "not_ready" };
 }
 
-/** Puts a reviewed item back in the queue (undo). */
+/** Puts a reviewed item back in the queue (undo), clearing the reflection that went with it. */
 export async function undoDecision(userId: string, itemId: string): Promise<ItemMutationResult> {
   await connectToDatabase();
   const item = await Item.findOneAndUpdate(
     { _id: itemId, userId, status: "reviewed" },
-    { $set: { status: "pending", decision: null, decidedAt: null } },
+    {
+      $set: {
+        status: "pending",
+        decision: null,
+        decidedAt: null,
+        reflectionResponses: [],
+        reflectionScore: null,
+        reflectionCompleted: false,
+        reflectionCompletedAt: null,
+      },
+    },
     { returnDocument: "after" },
   );
   return item ? { ok: true, item: toItemDTO(item) } : { ok: false, reason: "not_found" };

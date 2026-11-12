@@ -17,6 +17,23 @@ const ItemSchema = new Schema<ItemRecord>(
     status: { type: String, enum: ITEM_STATUSES, default: "pending", index: true },
     decision: { type: String, enum: [...ITEM_DECISIONS, null], default: null },
     decidedAt: { type: Date, default: null },
+    // Guided reflection, saved together with the decision it led to.
+    reflectionResponses: {
+      type: [
+        new Schema(
+          {
+            question: { type: String, required: true },
+            answer: { type: String, required: true },
+            score: { type: Number, required: true },
+          },
+          { _id: false },
+        ),
+      ],
+      default: [],
+    },
+    reflectionScore: { type: Number, default: null },
+    reflectionCompleted: { type: Boolean, default: false },
+    reflectionCompletedAt: { type: Date, default: null },
   },
   { timestamps: true },
 );

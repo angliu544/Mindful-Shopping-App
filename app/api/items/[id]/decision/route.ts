@@ -18,7 +18,10 @@ function respond(result: ItemMutationResult) {
   return jsonError(message, status, { code: result.reason });
 }
 
-/** Record a decision: body { decision: "buy" | "skip" }. */
+/**
+ * Record a decision: body { decision: "buy" | "skip", reflection?: { answers } },
+ * where answers maps each reflection question id to the chosen answer id.
+ */
 export async function POST(request: Request, ctx: Context) {
   const userId = await getApiUserId();
   if (!userId) return jsonError("Please sign in to review items.", 401);
@@ -34,11 +37,13 @@ export async function POST(request: Request, ctx: Context) {
   }
   const parsed = decisionBodySchema.safeParse(body);
   if (!parsed.success) {
-    return jsonError('Decision must be "buy" or "skip".', 400, { fieldErrors: fieldErrorsOf(parsed.error) });
+    const fieldErrors = fieldErrorsOf(parsed.error);
+    return jsonError(fieldErrors.reflection ?? 'Decision must be "buy" or "skip".', 400, { fieldErrors });
   }
 
   try {
-    return respond(await decideItem(userId, id.data, parsed.data.decision));
+    const { decision, reflection } = parsed.data;
+    return respond(await decideItem(userId, id.data, decision, reflection));
   } catch (error) {
     console.error("Failed to record decision", error);
     return jsonError("We couldn't save your decision. Please try again.", 500);

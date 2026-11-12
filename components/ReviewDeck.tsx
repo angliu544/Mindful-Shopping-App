@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import EmptyState from "@/components/EmptyState";
 import LocalDate from "@/components/LocalDate";
+import ReflectionChatbot from "@/components/ReflectionChatbot";
 import SwipeCard from "@/components/SwipeCard";
+import type { ReflectionAnswers } from "@/lib/reflection";
 import type { ApiErrorBody, ApiErrorCode, ItemResponse, ReviewQueueResponse } from "@/types/api";
 import type { ItemDecision, ItemDTO } from "@/types/item";
 import type { IncomeSettingsDTO } from "@/types/settings";
@@ -51,13 +53,15 @@ export default function ReviewDeck({
   const [error, setError] = useState<string | null>(null);
   const [lastAction, setLastAction] = useState<LastAction | null>(null);
   const [announcement, setAnnouncement] = useState("");
+  /** Id of the item whose Buy reflection is open. Buy is only recorded from the chatbot. */
+  const [reflectingId, setReflectingId] = useState<string | null>(null);
   // A ref, not state, so two clicks in the same frame can't both get through.
   const lockRef = useRef(false);
 
   const current = items[0];
 
   const decide = useCallback(
-    async (decision: ItemDecision) => {
+    async (decision: ItemDecision, answers?: ReflectionAnswers) => {
       const item = items[0];
       if (!item || lockRef.current) return;
       lockRef.current = true;
@@ -69,7 +73,7 @@ export default function ReviewDeck({
         request<ItemResponse>(`/api/items/${item.id}/decision`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ decision }),
+          body: JSON.stringify(answers ? { decision, reflection: { answers } } : { decision }),
         }),
         wait(EXIT_MS),
       ]);
@@ -93,6 +97,25 @@ export default function ReviewDeck({
     },
     [items],
   );
+
+  /** Buy opens the reflection chatbot instead of deciding straight away. */
+  const startBuy = useCallback(() => {
+    const item = items[0];
+    if (!item || lockRef.current) return;
+    setError(null);
+    setReflectingId(item.id);
+  }, [items]);
+
+  function finishReflection(decision: ItemDecision, answers: ReflectionAnswers | null) {
+    setReflectingId(null);
+    void decide(decision, answers ?? undefined);
+  }
+
+  /** A right swipe means Buy, so it opens the reflection too. */
+  function handleSwipe(decision: ItemDecision) {
+    if (decision === "buy") startBuy();
+    else void decide("skip");
+  }
 
   /** "Need More Time": the item leaves the deck and comes back after another wait. */
   async function needMoreTime() {
@@ -165,12 +188,12 @@ export default function ReviewDeck({
   // Arrow keys as a shortcut; the buttons remain the primary accessible control.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || reflectingId) return;
       const target = e.target as HTMLElement | null;
-      if (target?.closest("input, textarea, select, [contenteditable]")) return;
+      if (target?.closest("input, textarea, select, [contenteditable], dialog")) return;
       if (e.key === "ArrowRight") {
         e.preventDefault();
-        void decide("buy");
+        startBuy();
       } else if (e.key === "ArrowLeft") {
         e.preventDefault();
         void decide("skip");
@@ -178,7 +201,7 @@ export default function ReviewDeck({
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [decide]);
+  }, [decide, startBuy, reflectingId]);
 
   return (
     <div className="space-y-5">
@@ -207,9 +230,21 @@ export default function ReviewDeck({
               income={income}
               exitDirection={exit?.id === current.id ? exit.direction : null}
               disabled={busy}
-              onDecision={decide}
+              onDecision={handleSwipe}
             />
           </div>
+
+          <ReflectionChatbot
+            key={current.id}
+            itemName={current.name}
+            open={reflectingId === current.id}
+            onClose={() => setReflectingId(null)}
+            onDecide={finishReflection}
+            onNeedMoreTime={() => {
+              setReflectingId(null);
+              void needMoreTime();
+            }}
+          />
 
           <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-2 pt-2 sm:gap-3">
             <button
@@ -231,8 +266,9 @@ export default function ReviewDeck({
             </button>
             <button
               type="button"
-              onClick={() => decide("buy")}
+              onClick={startBuy}
               disabled={busy}
+              aria-haspopup="dialog"
               className="rounded-full bg-sage-600 px-3 py-3 font-medium leading-tight text-white hover:bg-sage-700 disabled:opacity-60 sm:px-4"
             >
               Buy

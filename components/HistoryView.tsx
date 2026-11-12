@@ -4,6 +4,7 @@ import EmptyState from "@/components/EmptyState";
 import LocalDate from "@/components/LocalDate";
 import { formatPrice } from "@/lib/format";
 import { formatWorkTime, workHoursFor } from "@/lib/income";
+import { reflectionBand } from "@/lib/reflection";
 import type { HistoryResponse } from "@/types/api";
 import type { ItemDecision, ItemDTO } from "@/types/item";
 import type { IncomeSettingsDTO } from "@/types/settings";
@@ -108,35 +109,61 @@ function ItemSection({ title, items, total }: { title: string; items: ItemDTO[];
   );
 }
 
+const formatScore = (score: number) => (score > 0 ? `+${score}` : String(score));
+
 function HistoryRow({ item }: { item: ItemDTO }) {
   const skipped = item.decision === "skip";
+  const { reflection } = item;
   return (
-    <li className="flex items-center gap-3 p-3" data-testid="history-item">
-      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-sage-50">
-        <Image src={item.imageUrl} alt="" fill sizes="56px" className="object-cover" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-ink">{item.name}</p>
-        <p className="text-sm text-ink-muted">
-          {item.decidedAt && (
-            <>
-              Reviewed <LocalDate iso={item.decidedAt} />
-            </>
+    <li className="p-3" data-testid="history-item">
+      <div className="flex items-center gap-3">
+        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-sage-50">
+          <Image src={item.imageUrl} alt="" fill sizes="56px" className="object-cover" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium text-ink">{item.name}</p>
+          <p className="text-sm text-ink-muted">
+            {item.decidedAt && (
+              <>
+                Reviewed <LocalDate iso={item.decidedAt} />
+              </>
+            )}
+          </p>
+          {reflection && (
+            <p className="text-sm text-ink-muted" data-testid="history-reflection">
+              Reflected · score {formatScore(reflection.score)} · {reflectionBand(reflection.score).label}
+            </p>
           )}
-        </p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="font-semibold text-ink">{formatPrice(item.price, item.currency)}</p>
+          {item.decision && (
+            <span
+              className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                skipped ? "bg-sage-100 text-sage-700" : "bg-cream text-ink-muted ring-1 ring-sage-200"
+              }`}
+            >
+              {decisionLabel[item.decision]}
+            </span>
+          )}
+        </div>
       </div>
-      <div className="shrink-0 text-right">
-        <p className="font-semibold text-ink">{formatPrice(item.price, item.currency)}</p>
-        {item.decision && (
-          <span
-            className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-              skipped ? "bg-sage-100 text-sage-700" : "bg-cream text-ink-muted ring-1 ring-sage-200"
-            }`}
-          >
-            {decisionLabel[item.decision]}
-          </span>
-        )}
-      </div>
+      {reflection && (
+        <details className="mt-2 pl-[4.25rem] text-sm">
+          <summary className="w-fit cursor-pointer rounded-full text-sage-700 underline underline-offset-2 hover:text-sage-600">
+            Reflection details
+          </summary>
+          <p className="mt-2 text-ink-muted">{reflectionBand(reflection.score).summary}</p>
+          <dl className="mt-2 space-y-1">
+            {reflection.responses.map((r) => (
+              <div key={r.question}>
+                <dt className="text-ink-muted">{r.question}</dt>
+                <dd className="font-medium text-ink">{r.answer}</dd>
+              </div>
+            ))}
+          </dl>
+        </details>
+      )}
     </li>
   );
 }

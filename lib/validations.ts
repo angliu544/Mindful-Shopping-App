@@ -6,6 +6,7 @@ import {
   MAX_IMAGE_BYTES,
   MAX_PRICE,
 } from "@/lib/constants";
+import { resolveReflection } from "@/lib/reflection";
 import { ITEM_DECISIONS } from "@/types/item";
 import { INCOME_TYPES } from "@/types/settings";
 
@@ -71,8 +72,25 @@ export function parsePriceInput(raw: string): number {
 
 export const objectIdSchema = z.string().regex(/^[a-f\d]{24}$/i, "That item couldn't be found.");
 
+/**
+ * Answer ids from the reflection chatbot, resolved to stored question/answer
+ * text and a score on the server. Any score sent by the client is ignored.
+ */
+const reflectionSchema = z
+  .object({ answers: z.record(z.string().max(40), z.string().max(40)) })
+  .transform((value, ctx) => {
+    const result = resolveReflection(value.answers);
+    if (!result) {
+      ctx.addIssue({ code: "custom", message: "Please answer each reflection question once." });
+      return z.NEVER;
+    }
+    return result;
+  });
+
 export const decisionBodySchema = z.object({
   decision: z.enum(ITEM_DECISIONS, { error: 'Decision must be "buy" or "skip".' }),
+  // Optional: Do Not Buy and "skip the questions" decide without a reflection.
+  reflection: reflectionSchema.optional(),
 });
 
 const MAX_HOURLY_RATE = 5_000;

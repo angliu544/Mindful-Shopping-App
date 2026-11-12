@@ -1,3 +1,5 @@
+import type { ReflectionResponse } from "@/lib/reflection";
+
 export const ITEM_STATUSES = ["pending", "reviewed"] as const;
 export const ITEM_DECISIONS = ["buy", "skip"] as const;
 
@@ -17,8 +19,19 @@ export interface ItemRecord {
   status: ItemStatus;
   decision: ItemDecision | null;
   decidedAt: Date | null;
+  /** Set only when the user finished the reflection chatbot before deciding. */
+  reflectionResponses: ReflectionResponse[];
+  reflectionScore: number | null;
+  reflectionCompleted: boolean;
+  reflectionCompletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface ReflectionDTO {
+  score: number;
+  responses: ReflectionResponse[];
+  completedAt: string;
 }
 
 /** Serializable item sent to Client Components. Dates are ISO 8601 UTC strings. */
@@ -33,5 +46,7 @@ export interface ItemDTO {
   status: ItemStatus;
   decision: ItemDecision | null;
   decidedAt: string | null;
+  /** Null unless the reflection was completed. */
+  reflection: ReflectionDTO | null;
   createdAt: string;
 }

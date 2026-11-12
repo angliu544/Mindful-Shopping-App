@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { connection } from "next/server";
 import { auth } from "@/auth";
 import NavLinks from "@/components/NavLinks";
 import UserMenu from "@/components/UserMenu";
@@ -24,6 +25,8 @@ export default function Navigation() {
 }
 
 async function AuthControls() {
+  // Render per request: auth() reads cookies and uses crypto, which can't be prerendered.
+  await connection();
   const session = await auth();
   const user = session?.user;
 

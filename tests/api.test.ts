@@ -120,6 +120,84 @@ describe("decision endpoint validation", () => {
   });
 });
 
+describe("reflection", () => {
+  const answers = { "own-similar": "yes", necessary: "want", frequency: "rarely", budget: "tighter", reason: "advertised" };
+
+  it("saves server-scored responses with the decision, ignoring client-sent scores", async () => {
+    session.userId = ALICE;
+    const item = await createItem(ALICE);
+    const res = await decisionRoute.POST(
+      json({ decision: "buy", reflection: { answers, score: 100 }, reflectionScore: 100, reflectionCompleted: false }),
+      ctx(item.id),
+    );
+    expect(res.status).toBe(200);
+    const saved = await Item.findById(item.id).lean();
+    expect(saved).toMatchObject({ status: "reviewed", decision: "buy", reflectionCompleted: true, reflectionScore: -8 });
+    expect(saved!.reflectionCompletedAt!.getTime()).toBe(saved!.decidedAt!.getTime());
+    expect(saved!.reflectionResponses).toHaveLength(5);
+    expect(saved!.reflectionResponses[0]).toEqual({ question: "Do you already own something similar?", answer: "Yes", score: -2 });
+
+    const history = await (await historyRoute.GET()).json();
+    expect(history.items[0].reflection).toMatchObject({ score: -8 });
+  });
+
+  it("can turn into Do Not Buy and still keep the reflection", async () => {
+    session.userId = ALICE;
+    const item = await createItem(ALICE);
+    expect((await decisionRoute.POST(json({ decision: "skip", reflection: { answers } }), ctx(item.id))).status).toBe(200);
+    expect(await Item.findById(item.id).lean()).toMatchObject({ decision: "skip", reflectionCompleted: true });
+  });
+
+  it("stores nothing when deciding without a reflection", async () => {
+    session.userId = ALICE;
+    const item = await createItem(ALICE);
+    await decisionRoute.POST(json({ decision: "skip" }), ctx(item.id));
+    expect(await Item.findById(item.id).lean()).toMatchObject({
+      decision: "skip",
+      reflectionCompleted: false,
+      reflectionScore: null,
+      reflectionCompletedAt: null,
+      reflectionResponses: [],
+    });
+    expect((await (await historyRoute.GET()).json()).items[0].reflection).toBeNull();
+  });
+
+  it("rejects incomplete answers without deciding", async () => {
+    session.userId = ALICE;
+    const item = await createItem(ALICE);
+    const res = await decisionRoute.POST(json({ decision: "buy", reflection: { answers: { budget: "yes" } } }), ctx(item.id));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("Please answer each reflection question once.");
+    expect(await Item.findById(item.id).lean()).toMatchObject({ status: "pending", reflectionCompleted: false });
+  });
+
+  it("a user cannot submit a reflection for another user's item", async () => {
+    const item = await createItem(ALICE);
+    session.userId = BOB;
+    const res = await decisionRoute.POST(json({ decision: "buy", reflection: { answers }, userId: ALICE }), ctx(item.id));
+    expect(res.status).toBe(404);
+    expect(await Item.findById(item.id).lean()).toMatchObject({
+      status: "pending",
+      decision: null,
+      reflectionCompleted: false,
+      reflectionResponses: [],
+    });
+  });
+
+  it("undo clears the reflection along with the decision", async () => {
+    session.userId = ALICE;
+    const item = await createItem(ALICE);
+    await decisionRoute.POST(json({ decision: "buy", reflection: { answers } }), ctx(item.id));
+    expect((await decisionRoute.DELETE(json({}), ctx(item.id))).status).toBe(200);
+    expect(await Item.findById(item.id).lean()).toMatchObject({
+      status: "pending",
+      reflectionCompleted: false,
+      reflectionScore: null,
+      reflectionResponses: [],
+    });
+  });
+});
+
 describe("creating items", () => {
   const validImage = (publicId: string) => ({
     publicId,

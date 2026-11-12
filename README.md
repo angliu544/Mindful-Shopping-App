@@ -8,8 +8,9 @@ Pause before you purchase. Snap a photo of something you want, wait 24 hours, th
 
 - Sign up / sign in with **Google** or **email and password** (Auth.js).
 - **Add an item** (`/upload`): add a photo (JPEG/PNG/WebP, ≤ 5 MB) by dragging it onto the photo box or tapping to choose one, plus a name, price and an optional reason. The item becomes reviewable 24 hours later.
-- **Review** (`/review`): one card at a time. Swipe right or press **Buy**; swipe left or press **Do Not Buy**; or press **Need More Time** to send the card back for another day (one waiting period) without deciding. The ← / → keys also work, and you can undo the most recent decision. Signed-in visitors to `/` land here.
-- **History** (`/history`): your Buy and Do Not Buy lists, the number reviewed, bought and skipped, and the total money saved.
+- **Review** (`/review`): one card at a time. Swipe right or press **Buy** to open a short guided reflection first; swipe left or press **Do Not Buy** to skip straight away; or press **Need More Time** to send the card back for another day (one waiting period) without deciding. The ← / → keys also work, and you can undo the most recent decision. Signed-in visitors to `/` land here.
+- **Guided reflection** (on Buy): a calm, chat-style set of five hardcoded questions, one at a time, then a score and a short summary. You can then **Confirm Buy**, **Mark Do Not Buy Instead**, **Need More Time** (the item comes back after another waiting period; no decision or reflection is saved), or **Review Answers**. It never decides for you, and you can skip the questions. No AI or external service is involved.
+- **History** (`/history`): your Buy and Do Not Buy lists, the number reviewed, bought and skipped, and the total money saved. Items you reflected on show the score and an expandable summary.
 - **Income settings** (`/settings`, also in the avatar menu): enter an hourly rate or a yearly salary. Cards and savings are then also shown as time worked (e.g. "≈ 3 h 5 min of work").
 
 ---
@@ -197,6 +198,9 @@ If you previously used Clerk, delete the old `CLERK_*` and `NEXT_PUBLIC_CLERK_*`
 ### The 24-hour wait
 There is no cron job. Each item stores `availableAt = now + 24h` as a BSON `Date` (always UTC). The review queue queries `{ userId, status: "pending", availableAt: { $lte: now } }`, backed by a compound index. Dates are rendered in each viewer's own time zone in the browser (`components/LocalDate.tsx`).
 
+### Guided reflection
+The questions, answer scores and summary bands live in `lib/reflection.ts`, shared by the chatbot (`components/ReflectionChatbot.tsx`) and the server. The browser sends only question and answer **ids**. The server looks up the text, computes the score, and saves `reflectionResponses`, `reflectionScore`, `reflectionCompleted` and `reflectionCompletedAt` in the same atomic, user-scoped update as the decision. Nothing is stored if the chatbot is closed, and undo clears it. Score bands: 4 or higher is "clear need"; 0 to 3 is "worth more thought"; below 0 is "possible impulse".
+
 ### API
 | Method | Route | Purpose |
 |---|---|---|
@@ -205,7 +209,7 @@ There is no cron job. Each item stores `availableAt = now + 24h` as a BSON `Date
 | `POST` | `/api/uploads/signature` | Signed parameters for a direct Cloudinary upload |
 | `POST` | `/api/items` | Create an item after the upload |
 | `GET` | `/api/items` | Items ready for review, plus when the next one is ready |
-| `POST` | `/api/items/:id/decision` | `{ "decision": "buy" \| "skip" }` |
+| `POST` | `/api/items/:id/decision` | `{ "decision": "buy" \| "skip", "reflection"?: { "answers": { questionId: answerId } } }` |
 | `DELETE` | `/api/items/:id/decision` | Undo a decision |
 | `POST` | `/api/items/:id/snooze` | Need More Time: the item comes back after another waiting period |
 | `GET` | `/api/history` | Reviewed items and totals |
