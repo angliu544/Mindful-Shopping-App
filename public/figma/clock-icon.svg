@@ -1,0 +1,18 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="75.6635" height="74.9025" viewBox="0 0 75.6635 74.9025" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Clock Icon" filter="url(#filter0_g_0_12)">
+<path id="Vector 22" d="M37.1066 6.85036C35.5601 6.43731 29.6984 8.11113 25.429 9.68972C19.9185 11.7272 17.3751 14.8634 14.9961 17.666C12.8665 20.175 11.7071 22.9495 11.0082 24.678C10.0544 27.037 8.63927 30.5208 7.81808 32.9436C7.17662 34.8362 6.62026 37.4768 6.31729 42.0654C6.18297 44.0997 6.13011 47.0435 6.4297 49.9787C6.90003 54.5866 9.07363 57.6405 10.4239 59.6584C11.5483 61.3387 13.1783 62.1958 16.9449 64.4484C18.7912 65.5526 21.9669 66.9264 28.1649 67.9512C39.659 69.8517 42.2385 67.5461 44.5375 67.1393L44.7402 67.1035C49.0704 66.3376 51.8366 65.8483 57.7145 63.6766C61.9362 62.1167 64.3014 59.4174 66.1696 57.2598C67.8922 55.2703 68.3138 51.642 68.8944 48.7557C69.7038 44.7318 69.4579 42.9558 69.2384 37.2597C69.1378 34.6479 66.0521 26.3918 63.9012 21.4738C62.5317 18.3424 58.285 14.7859 54.9568 12.0295C52.6885 10.1509 47.6926 7.87331 43.9117 6.51241C43.1625 6.36064 42.4619 6.28644 40.2803 6.24822C38.0987 6.21 34.4575 6.21 30.7059 6.21" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" stroke="#A69D9D"/>
+<path id="Vector 23" d="M36.7605 25.5032L36.7605 25.5021C36.7605 25.5021 36.7603 29.1373 36.742 35.102C36.7234 37.4406 36.6863 38.3197 36.6487 39.1388C36.611 39.958 36.5739 40.6906 36.5357 41.4453" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" stroke="#A69D9D"/>
+<path id="Vector 24" d="M36.1988 43.2212C38.4066 43.2212 41.4576 42.9413 43.6075 42.2075C47.4185 40.9066 50.3592 40.2112 52.9663 39.4074C53.5778 39.2006 54.3104 38.978 54.8709 38.8448C55.4315 38.7116 55.7978 38.6745 56.7301 38.4114" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" stroke="#A69D9D"/>
+</g>
+<defs>
+<filter id="filter0_g_0_12" x="0" y="0" width="75.6635" height="74.9025" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.25 0.25" numOctaves="3" seed="1762" />
+<feDisplacementMap in="shape" scale="3.4200000762939453" xChannelSelector="R" yChannelSelector="G" result="displacedImage" width="100%" height="100%" />
+<feMerge result="effect1_texture_0_12">
+<feMergeNode in="displacedImage"/>
+</feMerge>
+</filter>
+</defs>
+</svg>

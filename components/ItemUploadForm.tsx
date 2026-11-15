@@ -2,13 +2,15 @@
 
 import { useEffect, useId, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent } from "react";
 import Link from "next/link";
+import ConfettiButton, { CONFETTI_MS } from "@/components/ConfettiButton";
+import TextField, { FormError, TextAreaField } from "@/components/TextField";
 import { ALLOWED_IMAGE_TYPES, ITEM_DESCRIPTION_MAX_LENGTH, ITEM_NAME_MAX_LENGTH } from "@/lib/constants";
 import { describeUploadError } from "@/lib/upload-errors";
 import { fieldErrorsOf, itemFieldsSchema, parsePriceInput, validateImageFile } from "@/lib/validations";
 import type { ApiErrorBody, CreateItemResponse, UploadSignature } from "@/types/api";
 import type { ItemDTO } from "@/types/item";
 
-type Status = "idle" | "uploading" | "saving" | "success";
+type Status = "idle" | "uploading" | "saving" | "finishing" | "success";
 type FieldName = "image" | "name" | "price" | "description";
 type FieldErrors = Partial<Record<FieldName, string>>;
 
@@ -96,7 +98,9 @@ export default function ItemUploadForm() {
   const [status, setStatus] = useState<Status>("idle");
   const [saved, setSaved] = useState<ItemDTO | null>(null);
 
-  const busy = status === "uploading" || status === "saving";
+  const busy = status === "uploading" || status === "saving" || status === "finishing";
+  // Bumped on each valid "Start the pause" press to replay the star burst.
+  const [burst, setBurst] = useState(0);
 
   function replacePreview(next: File | null) {
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
@@ -212,6 +216,9 @@ export default function ItemUploadForm() {
     }
 
     submittingRef.current = true;
+    // The stars burst as soon as the pause starts, like the Figma button.
+    setBurst((b) => b + 1);
+    const burstStarted = performance.now();
     try {
       setStatus("uploading");
       const signature = await postJson<UploadSignature>("/api/uploads/signature");
@@ -223,6 +230,10 @@ export default function ItemUploadForm() {
         imagePublicId,
       });
       setSaved(item);
+      // Let the burst finish before the form is replaced by the confirmation.
+      setStatus("finishing");
+      const remaining = CONFETTI_MS - (performance.now() - burstStarted);
+      if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, remaining));
       setStatus("success");
     } catch (error) {
       const err = error instanceof RequestError ? error : new RequestError("Something went wrong. Please try again.");
@@ -236,26 +247,26 @@ export default function ItemUploadForm() {
 
   if (status === "success" && saved) {
     return (
-      <div role="status" className="rounded-3xl border border-sage-100 bg-paper p-8 text-center shadow-sm">
+      <div role="status" className="sk sk-outline rounded-[37px] px-6 py-10 text-center sm:px-10">
         {/* eslint-disable-next-line @next/next/no-img-element -- local preview of a just-uploaded image */}
-        {previewUrl && <img src={previewUrl} alt="" className="mx-auto h-40 w-40 rounded-2xl object-cover" />}
-        <h2 className="mt-6 font-serif text-2xl font-semibold">Set aside for 24 hours</h2>
-        <p className="mt-3 text-ink-muted">
-          <span className="font-medium text-ink">{saved.name}</span> will be ready for review on{" "}
-          <time dateTime={saved.availableAt} className="font-medium text-ink">
+        {previewUrl && <img src={previewUrl} alt="" className="mx-auto h-40 w-40 rounded-[26px] object-cover" />}
+        <h2 className="mt-6 text-[40px] leading-tight text-heading sm:text-[48px]">Set aside for now</h2>
+        <p className="mt-3 text-2xl text-body">
+          <span className="text-deep">{saved.name}</span> will be ready for review on{" "}
+          <time dateTime={saved.availableAt} className="text-deep">
             {availableFormatter.format(new Date(saved.availableAt))}
           </time>
           . Until then, let it go and see how you feel.
         </p>
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <button
             type="button"
             onClick={resetForm}
-            className="rounded-full bg-sage-600 px-6 py-3 font-medium text-white hover:bg-sage-700"
+            className="sk sk-btn flex h-16 items-center rounded-[20px] px-6 text-[30px] text-canvas"
           >
             Add another item
           </button>
-          <Link href="/review" className="rounded-full border border-sage-200 px-6 py-3 font-medium hover:bg-sage-50">
+          <Link href="/review" className="sk sk-btn-dark flex h-16 items-center rounded-[20px] px-6 text-[30px] text-canvas">
             Go to review
           </Link>
         </div>
@@ -263,16 +274,9 @@ export default function ItemUploadForm() {
     );
   }
 
-  const inputClass = (field: FieldName) =>
-    `mt-2 block w-full rounded-2xl border bg-paper px-4 py-3 text-ink placeholder:text-ink-muted/60 ${
-      fieldErrors[field] ? "border-red-400" : "border-sage-200"
-    }`;
-  const describedBy = (field: FieldName) => (fieldErrors[field] ? `${ids[field]}-error` : undefined);
-
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-6" aria-busy={busy}>
-      <div>
-        <span className="block font-medium">Photo</span>
+    <form onSubmit={handleSubmit} noValidate className="space-y-7" aria-busy={busy}>
+      <div className="mx-auto max-w-[600px]">
         <input
           ref={fileInputRef}
           id={ids.image}
@@ -281,7 +285,7 @@ export default function ItemUploadForm() {
           onChange={handleFileChange}
           disabled={busy}
           aria-invalid={!!fieldErrors.image}
-          aria-describedby={[`${ids.image}-hint`, describedBy("image")].filter(Boolean).join(" ")}
+          aria-describedby={[`${ids.image}-hint`, fieldErrors.image && `${ids.image}-error`].filter(Boolean).join(" ")}
           className="peer sr-only"
         />
         <label
@@ -291,140 +295,96 @@ export default function ItemUploadForm() {
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           data-testid="photo-dropzone"
-          className={`relative mt-2 flex aspect-square w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-dashed text-center transition-colors hover:bg-sage-50 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-sage-600 sm:aspect-[4/3] ${
-            dragging
-              ? "border-sage-600 bg-sage-50"
-              : fieldErrors.image
-                ? "border-red-400 bg-paper"
-                : "border-sage-200 bg-paper"
+          className={`sk relative flex aspect-[6/5] w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[37px] text-center peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-link ${
+            dragging ? "sk-dashed-active" : fieldErrors.image ? "sk-dashed [--sk-edge:var(--color-danger)]" : "sk-dashed"
           }`}
         >
           {previewUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- blob: preview URLs can't go through next/image
-            <img src={previewUrl} alt="Preview of the selected photo" className="h-full w-full object-cover" />
+            <img
+              src={previewUrl}
+              alt="Preview of the selected photo"
+              className="absolute inset-[10px] h-[calc(100%-20px)] w-[calc(100%-20px)] rounded-[28px] object-cover"
+            />
           ) : (
-            <span className="px-6 text-ink-muted">
-              <span className="block font-medium text-sage-700">Choose a photo</span>
-              <span className="mt-1 block text-sm">Drag one here, or tap to select</span>
+            <span className="flex flex-col items-center gap-4 px-6 sm:gap-6">
+              <span className="text-[32px] text-faint sm:text-[40px]">Add a photo</span>
+              {/* eslint-disable-next-line @next/next/no-img-element -- static design asset */}
+              <img src="/figma/photo-icon.svg" alt="" width={168} height={160} className="w-28 sm:w-[154px]" />
+              <span className="text-2xl text-faint sm:text-[31px]">Drag and drop or select one</span>
             </span>
           )}
           {dragging && (
-            <span
-              aria-hidden
-              className="absolute inset-0 flex items-center justify-center bg-sage-50/90 font-medium text-sage-700"
-            >
+            <span aria-hidden className="absolute inset-0 flex items-center justify-center bg-sage-50/90 text-[36px] text-body">
               Drop the photo here
             </span>
           )}
         </label>
-        <p id={`${ids.image}-hint`} className="mt-2 text-sm text-ink-muted">
+        <p id={`${ids.image}-hint`} className="mt-2 pl-2 text-lg text-faint sm:text-[23px]">
           JPEG, PNG, or WebP, up to 5 MB.{file && ` Selected: ${file.name}. Tap or drop another photo to change it.`}
         </p>
         {fieldErrors.image && (
-          <p id={`${ids.image}-error`} className="mt-1 text-sm text-red-700">
+          <p id={`${ids.image}-error`} className="mt-1 pl-2 text-lg text-danger sm:text-xl">
             {fieldErrors.image}
           </p>
         )}
       </div>
 
-      <div>
-        <label htmlFor={ids.name} className="block font-medium">
-          What is it?
-        </label>
-        <input
+      <div className="mx-auto max-w-[626px] space-y-7">
+        <TextField
           id={ids.name}
-          type="text"
+          label="What is it?"
           value={name}
           onChange={(e) => setName(e.target.value)}
           maxLength={ITEM_NAME_MAX_LENGTH}
-          placeholder="e.g. Linen throw blanket"
+          placeholder="e.g Squishies"
           autoComplete="off"
           disabled={busy}
-          aria-invalid={!!fieldErrors.name}
-          aria-describedby={describedBy("name")}
-          className={inputClass("name")}
+          error={fieldErrors.name}
         />
-        {fieldErrors.name && (
-          <p id={`${ids.name}-error`} className="mt-1 text-sm text-red-700">
-            {fieldErrors.name}
-          </p>
-        )}
-      </div>
-
-      <div>
-        <label htmlFor={ids.price} className="block font-medium">
-          Price (USD)
-        </label>
-        <div className="relative">
-          <span aria-hidden className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-ink-muted">
-            $
-          </span>
-          <input
-            id={ids.price}
-            type="text"
-            inputMode="decimal"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            placeholder="0.00"
-            autoComplete="off"
-            disabled={busy}
-            aria-invalid={!!fieldErrors.price}
-            aria-describedby={describedBy("price")}
-            className={`${inputClass("price")} pl-8`}
-          />
-        </div>
-        {fieldErrors.price && (
-          <p id={`${ids.price}-error`} className="mt-1 text-sm text-red-700">
-            {fieldErrors.price}
-          </p>
-        )}
-      </div>
-
-      <div>
-        <label htmlFor={ids.description} className="block font-medium">
-          Why do you want it? <span className="font-normal text-ink-muted">(optional)</span>
-        </label>
-        <textarea
-          id={ids.description}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          maxLength={ITEM_DESCRIPTION_MAX_LENGTH}
-          rows={3}
-          placeholder="What made you want this today?"
+        <TextField
+          id={ids.price}
+          label="Price(USD)"
+          prefix="$"
+          inputMode="decimal"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          placeholder="0.00"
+          autoComplete="off"
           disabled={busy}
-          aria-invalid={!!fieldErrors.description}
-          aria-describedby={[`${ids.description}-count`, describedBy("description")].filter(Boolean).join(" ")}
-          className={inputClass("description")}
+          error={fieldErrors.price}
         />
-        <p id={`${ids.description}-count`} className="mt-1 text-right text-xs text-ink-muted">
-          {description.length}/{ITEM_DESCRIPTION_MAX_LENGTH}
-        </p>
-        {fieldErrors.description && (
-          <p id={`${ids.description}-error`} className="mt-1 text-sm text-red-700">
-            {fieldErrors.description}
+        <div>
+          <TextAreaField
+            id={ids.description}
+            label={
+              <>
+                Why do you want it? <span className="text-faint">(optional)</span>
+              </>
+            }
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            maxLength={ITEM_DESCRIPTION_MAX_LENGTH}
+            placeholder="What made you want this today?"
+            disabled={busy}
+            error={fieldErrors.description}
+          />
+          <p className="mt-1 text-right text-lg text-faint sm:text-[23px]" aria-live="polite">
+            {description.length}/{ITEM_DESCRIPTION_MAX_LENGTH} characters
           </p>
-        )}
-      </div>
+        </div>
 
-      {formError && (
-        <p role="alert" className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-800">
-          {formError}
+        <FormError message={formError} />
+
+        <div className="flex justify-center pt-2">
+          <ConfettiButton type="submit" disabled={busy} burst={burst}>
+            {status === "uploading" ? "Uploading…" : status === "saving" ? "Saving…" : "Start the pause"}
+          </ConfettiButton>
+        </div>
+        <p aria-live="polite" className="sr-only">
+          {status === "uploading" ? "Uploading photo" : status === "saving" ? "Saving item" : status === "finishing" ? "Saved" : ""}
         </p>
-      )}
-
-      <button
-        type="submit"
-        disabled={busy}
-        className="flex w-full items-center justify-center gap-2 rounded-full bg-sage-600 px-6 py-3 font-medium text-white hover:bg-sage-700 disabled:cursor-not-allowed disabled:opacity-70"
-      >
-        {busy && (
-          <span aria-hidden className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-        )}
-        {status === "uploading" ? "Uploading photo…" : status === "saving" ? "Saving…" : "Start the 24-hour pause"}
-      </button>
-      <p aria-live="polite" className="sr-only">
-        {status === "uploading" ? "Uploading photo" : status === "saving" ? "Saving item" : ""}
-      </p>
+      </div>
     </form>
   );
 }

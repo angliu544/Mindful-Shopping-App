@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import {connection} from "next/server";
+import { connection } from "next/server";
 import HistoryView from "@/components/HistoryView";
 import LoadingState from "@/components/LoadingState";
 import { requireUserId } from "@/lib/auth";
@@ -8,14 +8,10 @@ import { getIncomeSettings } from "@/lib/settings";
 
 export default function HistoryPage() {
   return (
-    <div className="mx-auto max-w-xl px-4 py-8 sm:py-12">
-      <h1 className="font-serif text-3xl font-semibold">Your decisions</h1>
-      <p className="mt-2 text-ink-muted">Every item you let go is money you kept.</p>
-      <div className="mt-8">
-        <Suspense fallback={<LoadingState label="Loading your history…" />}>
-          <HistoryContent />
-        </Suspense>
-      </div>
+    <div className="mx-auto max-w-[860px] px-4 pb-16 pt-6 sm:pt-[45px]">
+      <Suspense fallback={<LoadingState label="Loading your history…" />}>
+        <HistoryContent />
+      </Suspense>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useRef, useState, type FormEvent } from "react";
+import TextField, { FormError, primaryButton } from "@/components/TextField";
 import { DEFAULT_HOURS_PER_WEEK, formatWorkTime, workHoursFor } from "@/lib/income";
 import { fieldErrorsOf, incomeSettingsSchema, parsePriceInput } from "@/lib/validations";
 import type { ApiErrorBody } from "@/types/api";
@@ -103,23 +104,18 @@ export default function IncomeSettingsForm({ initial }: { initial: IncomeSetting
     );
   }
 
-  const describedBy = (field: FieldName, extra?: string) =>
-    [extra, fieldErrors[field] ? `${field}-error` : undefined].filter(Boolean).join(" ") || undefined;
-  const inputClass = (field: FieldName) =>
-    `mt-2 block w-full rounded-2xl border bg-paper px-4 py-3 text-ink ${fieldErrors[field] ? "border-red-400" : "border-sage-200"}`;
+  const pill = (active: boolean) =>
+    `sk flex min-h-[60px] cursor-pointer items-center justify-center rounded-[20px] px-4 text-center text-2xl transition-colors has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-link sm:min-h-[72px] sm:text-[32px] ${
+      active ? "sk-btn text-canvas" : "sk-tile text-body hover:brightness-[0.98]"
+    }`;
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-6" aria-busy={busy}>
+    <form onSubmit={handleSubmit} noValidate className="space-y-8" aria-busy={busy}>
       <fieldset>
-        <legend className="font-medium">How are you paid?</legend>
-        <div className="mt-2 grid grid-cols-2 gap-2 rounded-full bg-sage-50 p-1">
+        <legend className="text-[26px] leading-tight text-heading sm:text-[32px]">How are you paid?</legend>
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:gap-4">
           {(["hourly", "salary"] as const).map((type) => (
-            <label
-              key={type}
-              className={`cursor-pointer rounded-full px-4 py-2 text-center font-medium transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-sage-600 ${
-                incomeType === type ? "bg-sage-600 text-white shadow-sm" : "text-ink-muted hover:bg-paper hover:text-ink"
-              }`}
-            >
+            <label key={type} className={pill(incomeType === type)}>
               <input
                 type="radio"
                 name="incomeType"
@@ -138,105 +134,64 @@ export default function IncomeSettingsForm({ initial }: { initial: IncomeSetting
         </div>
       </fieldset>
 
-      <div>
-        <label htmlFor={ids.amount} className="block font-medium">
-          {incomeType === "hourly" ? "Hourly pay (USD)" : "Yearly salary (USD)"}
-        </label>
-        <div className="relative">
-          <span aria-hidden className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-ink-muted">
-            $
-          </span>
-          <input
-            id={ids.amount}
-            type="text"
-            inputMode="decimal"
-            value={amount}
-            onChange={(e) => {
-              setAmount(e.target.value);
-              clearError("incomeAmount");
-            }}
-            placeholder={incomeType === "hourly" ? "25.00" : "60,000"}
-            autoComplete="off"
-            disabled={busy}
-            aria-invalid={!!fieldErrors.incomeAmount}
-            aria-describedby={describedBy("incomeAmount", `${ids.amount}-hint`)}
-            className={`${inputClass("incomeAmount")} pl-8 pr-20`}
-          />
-          <span aria-hidden className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm text-ink-muted">
-            {incomeType === "hourly" ? "/ hour" : "/ year"}
-          </span>
-        </div>
-        <p id={`${ids.amount}-hint`} className="mt-1 text-sm text-ink-muted">
-          Tip: use your take-home (after-tax) pay for a more honest number.
-        </p>
-        {fieldErrors.incomeAmount && (
-          <p id="incomeAmount-error" className="mt-1 text-sm text-red-700">
-            {fieldErrors.incomeAmount}
-          </p>
-        )}
-      </div>
+      <TextField
+        id={ids.amount}
+        label={incomeType === "hourly" ? "Hourly pay (USD)" : "Yearly salary (USD)"}
+        prefix="$"
+        suffix={incomeType === "hourly" ? "/ hour" : "/ year"}
+        inputMode="decimal"
+        value={amount}
+        onChange={(e) => {
+          setAmount(e.target.value);
+          clearError("incomeAmount");
+        }}
+        placeholder={incomeType === "hourly" ? "25.00" : "60,000"}
+        autoComplete="off"
+        disabled={busy}
+        error={fieldErrors.incomeAmount}
+        hint="Tip: use your take-home (after-tax) pay for a more honest number."
+      />
 
       {/* Only a salary needs hours to work out an hourly rate. */}
       {incomeType === "salary" && (
-        <div>
-          <label htmlFor={ids.hours} className="block font-medium">
-            Hours you work per week
-          </label>
-          <input
-            id={ids.hours}
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={100}
-            value={hours}
-            onChange={(e) => {
-              setHours(e.target.value);
-              clearError("hoursPerWeek");
-            }}
-            disabled={busy}
-            aria-invalid={!!fieldErrors.hoursPerWeek}
-            aria-describedby={describedBy("hoursPerWeek", `${ids.hours}-hint`)}
-            className={inputClass("hoursPerWeek")}
-          />
-          <p id={`${ids.hours}-hint`} className="mt-1 text-sm text-ink-muted">
-            Used to turn your salary into an hourly rate.
-          </p>
-          {fieldErrors.hoursPerWeek && (
-            <p id="hoursPerWeek-error" className="mt-1 text-sm text-red-700">
-              {fieldErrors.hoursPerWeek}
-            </p>
-          )}
-        </div>
+        <TextField
+          id={ids.hours}
+          label="Hours you work per week"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={100}
+          value={hours}
+          onChange={(e) => {
+            setHours(e.target.value);
+            clearError("hoursPerWeek");
+          }}
+          disabled={busy}
+          error={fieldErrors.hoursPerWeek}
+          hint="Used to turn your salary into an hourly rate."
+        />
       )}
 
-      <div className="rounded-2xl bg-sage-50 px-4 py-3 text-sm text-ink-muted" aria-live="polite">
+      <div className="sk sk-panel rounded-[32px] px-6 py-5 text-xl text-body sm:text-[26px]" aria-live="polite">
         {previewHours !== null && draft.success ? (
           <>
             A $100 item would take about{" "}
-            <span className="font-medium text-ink">{formatWorkTime(previewHours, draft.data.hoursPerWeek)}</span> of work.
+            <span className="text-deep">{formatWorkTime(previewHours, draft.data.hoursPerWeek)}</span> of work.
           </>
         ) : (
           "Enter your income to see what a $100 item costs in work time."
         )}
       </div>
 
-      {formError && (
-        <p role="alert" className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-800">
-          {formError}
-        </p>
-      )}
+      <FormError message={formError} />
       {message && (
-        <p role="status" className="rounded-2xl bg-sage-100 px-4 py-3 text-sm text-sage-700">
+        <p role="status" className="sk sk-badge-skip rounded-[14px] px-4 py-3 text-xl text-deep sm:text-[24px]">
           {message}
         </p>
       )}
 
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <button
-          type="submit"
-          disabled={busy}
-          className="flex-1 rounded-full bg-sage-600 px-6 py-3 font-medium text-white hover:bg-sage-700 disabled:opacity-70"
-        >
+      <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+        <button type="submit" disabled={busy} className={`${primaryButton} mx-0 w-full sm:w-auto`}>
           {status === "saving" ? "Saving…" : "Save"}
         </button>
         {saved && (
@@ -244,14 +199,14 @@ export default function IncomeSettingsForm({ initial }: { initial: IncomeSetting
             type="button"
             onClick={handleRemove}
             disabled={busy}
-            className="rounded-full border border-sage-200 px-6 py-3 font-medium hover:bg-sage-50 disabled:opacity-70"
+            className="sk sk-tile flex h-[64px] w-full items-center justify-center rounded-[20px] px-6 text-[28px] text-danger disabled:opacity-70 sm:h-[72px] sm:w-auto sm:text-[34px]"
           >
             {status === "removing" ? "Removing…" : "Remove income"}
           </button>
         )}
       </div>
 
-      <p className="text-xs text-ink-muted">
+      <p className="text-center text-lg text-muted sm:text-[22px]">
         Your income is stored with your account and only used to show work time on your cards.
       </p>
     </form>

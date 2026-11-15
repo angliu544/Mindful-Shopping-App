@@ -1,10 +1,10 @@
 "use client";
 
 import { useActionState, useId } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { OrDivider } from "@/components/AuthCard";
+import { AuthSwitchLink, OrDivider } from "@/components/AuthCard";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
+import TextField, { FormError, primaryButton } from "@/components/TextField";
 import { signInWithPassword, type SignInState } from "@/lib/auth-actions";
 import { safeCallbackUrl } from "@/lib/redirects";
 
@@ -26,8 +26,6 @@ function messageForError(code: string | null): string | null {
   }
 }
 
-const inputClass = "mt-2 block w-full rounded-2xl border border-sage-200 bg-paper px-4 py-3 text-ink";
-
 export default function SignInForm() {
   const params = useSearchParams();
   const callbackUrl = safeCallbackUrl(params.get("callbackUrl"));
@@ -38,61 +36,28 @@ export default function SignInForm() {
 
   return (
     <div>
-      {error && (
-        <p role="alert" className="mb-6 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-800">
-          {error}
-        </p>
-      )}
-
-      <GoogleSignInButton callbackUrl={callbackUrl} disabled={pending} />
+      <GoogleSignInButton callbackUrl={callbackUrl} label="Sign in with Google" disabled={pending} />
       <OrDivider />
 
-      <form action={formAction} className="space-y-5" aria-busy={pending}>
+      <form action={formAction} className="space-y-6" aria-busy={pending}>
         <input type="hidden" name="callbackUrl" value={callbackUrl} />
-        <div>
-          <label htmlFor={ids.email} className="block font-medium">
-            Email
-          </label>
-          <input
-            id={ids.email}
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            disabled={pending}
-            className={inputClass}
-          />
-        </div>
-        <div>
-          <label htmlFor={ids.password} className="block font-medium">
-            Password
-          </label>
-          <input
-            id={ids.password}
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            disabled={pending}
-            className={inputClass}
-          />
-        </div>
-        <button
-          type="submit"
+        <TextField id={ids.email} label="Email:" name="email" type="email" autoComplete="email" required disabled={pending} />
+        <TextField
+          id={ids.password}
+          label="Password:"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          required
           disabled={pending}
-          className="flex w-full items-center justify-center gap-2 rounded-full bg-sage-600 px-6 py-3 font-medium text-white hover:bg-sage-700 disabled:opacity-70"
-        >
-          {pending && <span aria-hidden className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
+        />
+        <FormError message={error} />
+        <button type="submit" disabled={pending} className={primaryButton}>
           {pending ? "Signing in…" : "Sign in"}
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-ink-muted">
-        New here?{" "}
-        <Link href="/sign-up" className="font-medium text-sage-700 underline underline-offset-2">
-          Create an account
-        </Link>
-      </p>
+      <AuthSwitchLink prompt="New here?" href="/sign-up" label="Sign up" />
     </div>
   );
 }

@@ -8,14 +8,10 @@ import { getIncomeSettings } from "@/lib/settings";
 
 export default function ReviewPage() {
   return (
-    <div className="mx-auto max-w-xl px-4 py-6 sm:py-12">
-      <h1 className="font-serif text-3xl font-semibold">Do you still want it?</h1>
-      <p className="mt-2 text-ink-muted">A day has passed. Take a breath and decide.</p>
-      <div className="mt-6">
-        <Suspense fallback={<LoadingState label="Loading your items…" />}>
-          <ReviewContent />
-        </Suspense>
-      </div>
+    <div className="px-4 pb-12 pt-4 sm:pt-[13px]">
+      <Suspense fallback={<LoadingState label="Loading your items…" />}>
+        <ReviewContent />
+      </Suspense>
     </div>
   );
 }

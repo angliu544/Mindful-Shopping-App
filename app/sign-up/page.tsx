@@ -3,7 +3,7 @@ import SignUpForm from "@/components/SignUpForm";
 
 export default function SignUpPage() {
   return (
-    <AuthCard title="Create your account" subtitle="Start pausing before you purchase.">
+    <AuthCard title="Sign up" subtitle={<p className="text-[38px] leading-tight sm:text-[48px]">Create your account!</p>}>
       <SignUpForm />
     </AuthCard>
   );

@@ -1,19 +1,52 @@
 @import "tailwindcss";
 
+/* Palette from the Figma file ("Consider"). */
 @theme {
-  --color-cream: #f7f4ec;
-  --color-paper: #fffdf8;
-  --color-sage-50: #f1f5ef;
-  --color-sage-100: #e1ebdc;
-  --color-sage-200: #c5d7bc;
-  --color-sage-500: #6f9566;
-  --color-sage-600: #557a4d;
-  --color-sage-700: #43623d;
-  --color-ink: #2b2d2a;
-  --color-ink-muted: #5f625c;
+  --color-canvas: #f0f3fb; /* page background */
+  --color-sky: #acd5fb; /* top bar, modal header */
+  --color-sky-edge: #70aee9;
+  --color-btn: #83add5; /* primary buttons */
+  --color-btn-edge: #759ec4;
+  --color-btn-dark: #6384a3; /* secondary nav button */
+  --color-btn-strong: #679dcf; /* "+" add item */
+  --color-btn-soft: #bcd3e6; /* "Check again" */
+  --color-heading: #5b7b98;
+  --color-body: #537a9f;
+  --color-deep: #234b70; /* prices, numbers */
+  --color-muted: #7991a7;
+  --color-faint: #8ea9c3; /* placeholders, card outline */
+  --color-link: #355878;
+  --color-field: #e8ebf2;
+  --color-field-edge: #c2c7cf;
+  --color-card: #f3f3f5;
+  --color-card-edge: #8ea9c3;
+  --color-panel: #e1e9f0;
+  --color-panel-edge: #b3cee6;
+  --color-photo: #d9d9d9;
+  --color-skip-badge: #b4e3bf;
+  --color-skip-badge-edge: #a3c9ac;
+  --color-buy-badge: #e3e6e8;
+  --color-buy-badge-edge: #a0bcd4;
+  --color-danger: #bb5f5f;
+  --color-danger-bg: #d86f6f;
 
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-fraunces), ui-serif, Georgia, serif;
+  /* Older token names, remapped so every screen shares the new palette. */
+  --color-cream: #f0f3fb;
+  --color-paper: #f3f3f5;
+  --color-sage-50: #e5f3ff;
+  --color-sage-100: #dbe8f4;
+  --color-sage-200: #b3cee6;
+  --color-sage-500: #8ea9c3;
+  --color-sage-600: #83add5;
+  --color-sage-700: #537a9f;
+  --color-ink: #5b7b98;
+  --color-ink-muted: #7991a7;
+
+  --font-sans: var(--font-darumadrop), ui-rounded, system-ui, sans-serif;
+  --font-serif: var(--font-darumadrop), ui-rounded, system-ui, sans-serif;
+  --font-display: var(--font-darumadrop), ui-rounded, system-ui, sans-serif;
+
+  --shadow-card: 2px 5px 12px 0 rgb(48 74 99 / 0.16);
 }
 
 @layer base {
@@ -22,10 +55,114 @@
   }
 
   body {
-    @apply bg-cream text-ink font-sans;
+    @apply bg-canvas text-heading font-sans;
   }
 
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-sage-600;
+    @apply outline-3 outline-offset-2 outline-link;
+  }
+}
+
+/*
+ * Hand-drawn edges. The Figma file roughens shapes with a fractal-noise
+ * displacement (baseFrequency 0.25, 3 octaves). `sk` reproduces it on a
+ * pseudo-element so boxes can be any size while the text stays crisp.
+ * Set --sk-bg / --sk-edge / --sk-w (border width) per variant.
+ */
+@layer components {
+  .sk {
+    position: relative;
+    isolation: isolate;
+  }
+  .sk::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: var(--sk-bg, transparent);
+    border: var(--sk-w, 0px) var(--sk-style, solid) var(--sk-edge, transparent);
+    filter: url(#sketch);
+    pointer-events: none;
+  }
+  /* Outline drawn above the content (e.g. over a card's photo). */
+  .sk-over::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    border: var(--sk-w) solid var(--sk-edge);
+    filter: url(#sketch);
+    pointer-events: none;
+  }
+  .sk-over::before {
+    border-color: transparent;
+  }
+
+  .sk-bar { --sk-bg: var(--color-sky); --sk-edge: var(--color-sky-edge); --sk-w: 2px; }
+  .sk-btn { --sk-bg: var(--color-btn); --sk-edge: var(--color-btn-edge); --sk-w: 2px; }
+  .sk-btn-dark { --sk-bg: var(--color-btn-dark); --sk-edge: var(--color-btn-edge); --sk-w: 1px; }
+  .sk-btn-strong { --sk-bg: var(--color-btn-strong); --sk-edge: var(--color-btn-edge); --sk-w: 1px; }
+  .sk-btn-soft { --sk-bg: var(--color-btn-soft); --sk-edge: var(--color-panel-edge); --sk-w: 3px; }
+  .sk-field { --sk-bg: var(--color-field); --sk-edge: var(--color-field-edge); --sk-w: 5px; }
+  .sk-modal { --sk-bg: var(--color-canvas); --sk-edge: var(--color-field-edge); --sk-w: 7px; }
+  .sk-card { --sk-bg: var(--color-card); --sk-edge: var(--color-card-edge); --sk-w: 8px; }
+  .sk-outline { --sk-bg: var(--color-canvas); --sk-edge: var(--color-card-edge); --sk-w: 5px; }
+  .sk-panel { --sk-bg: var(--color-panel); --sk-edge: var(--color-panel-edge); --sk-w: 5px; }
+  .sk-tile { --sk-bg: var(--color-card); --sk-edge: var(--color-panel-edge); --sk-w: 4px; }
+  .sk-dashed { --sk-bg: transparent; --sk-edge: var(--color-field-edge); --sk-w: 8px; --sk-style: dashed; }
+  .sk-dashed-active { --sk-bg: var(--color-sage-50); --sk-edge: var(--color-btn); --sk-w: 8px; --sk-style: dashed; }
+  .sk-badge-skip { --sk-bg: var(--color-skip-badge); --sk-edge: var(--color-skip-badge-edge); --sk-w: 3px; }
+  .sk-badge-buy { --sk-bg: var(--color-buy-badge); --sk-edge: var(--color-buy-badge-edge); --sk-w: 3px; }
+  .sk-photo { --sk-bg: var(--color-photo); }
+
+  /* Input boxes show focus on the drawn box (the input itself is borderless). */
+  .sk-field:focus-within:has(input:focus-visible, textarea:focus-visible) {
+    outline: 3px solid var(--color-link);
+    outline-offset: 3px;
+  }
+}
+
+/* Logo stars on the home page wiggle (from the Figma prototype, 2s loop). */
+@keyframes star-wiggle {
+  0%, 5.99% { transform: rotate(0deg); }
+  6%, 12.99% { transform: rotate(18deg); }
+  13%, 19.99% { transform: rotate(-24deg); }
+  20%, 28.49% { transform: rotate(27deg); }
+  28.5%, 35.99% { transform: rotate(-20deg); }
+  36%, 43.99% { transform: rotate(23deg); }
+  44%, 51.99% { transform: rotate(-28deg); }
+  52%, 60.99% { transform: rotate(19deg); }
+  61%, 68.99% { transform: rotate(-24deg); }
+  69%, 77.99% { transform: rotate(25deg); }
+  78%, 86.99% { transform: rotate(-18deg); }
+  87%, 94.99% { transform: rotate(14deg); }
+  95%, 100% { transform: rotate(0deg); }
+}
+
+/* The cart rolls back and forth (from the Figma prototype, 2s loop). */
+@keyframes cart-roll {
+  0% { transform: translate(0, 0) rotate(0deg); animation-timing-function: ease-in-out; }
+  12% { transform: translate(-5px, 2px) rotate(-3deg); animation-timing-function: ease-out; }
+  29% { transform: translate(14px, -9px) rotate(4deg); animation-timing-function: ease-in-out; }
+  40% { transform: translate(22px, 0) rotate(-2.5deg); animation-timing-function: ease-in-out; }
+  48% { transform: translate(23px, -1.5px) rotate(-0.5deg); animation-timing-function: ease-in-out; }
+  56% { transform: translate(20px, -3px) rotate(1.5deg); animation-timing-function: ease-in-out; }
+  82% { transform: translate(0, 0) rotate(0deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+/* "Start the pause" star confetti: Ready -> Burst -> Fade. */
+@keyframes confetti-burst {
+  0% { transform: translate(0, 0) rotate(0deg) scale(0.6); opacity: 0; }
+  15% { opacity: 1; }
+  55% { transform: translate(var(--burst-x), var(--burst-y)) rotate(var(--burst-r)) scale(1); opacity: 1; }
+  100% { transform: translate(var(--fade-x), var(--fade-y)) rotate(var(--fade-r)) scale(1); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-loop {
+    animation: none !important;
   }
 }

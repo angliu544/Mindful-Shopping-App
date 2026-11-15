@@ -4,9 +4,15 @@ import { useSyncExternalStore } from "react";
 
 const subscribe = () => () => {};
 
+/** False during server render and hydration, true afterwards: lets dates switch to the viewer's time zone. */
+export function useIsClient(): boolean {
+  return useSyncExternalStore(subscribe, () => true, () => false);
+}
+
 const formats = {
   date: { month: "short", day: "numeric", year: "numeric" },
   dateTime: { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" },
+  longDateTime: { weekday: "short", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" },
 } satisfies Record<string, Intl.DateTimeFormatOptions>;
 
 /**
@@ -14,7 +20,7 @@ const formats = {
  * know that zone, so it renders the UTC date and the browser swaps in local time.
  */
 export default function LocalDate({ iso, format = "date" }: { iso: string; format?: keyof typeof formats }) {
-  const isClient = useSyncExternalStore(subscribe, () => true, () => false);
+  const isClient = useIsClient();
   const date = new Date(iso);
   const label = isClient
     ? new Intl.DateTimeFormat(undefined, formats[format]).format(date)

@@ -1,0 +1,24 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="60.802" height="43.6557" viewBox="0 0 60.802 43.6557" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Filter Icon" filter="url(#filter0_g_0_12)">
+<path id="Vector 25" d="M4.91812 6.17104C5.54266 6.10211 6.51393 5.82431 8.49617 5.71883C9.23553 5.67948 10.1338 5.54441 11.2116 5.50995C11.9516 5.48629 15.8131 5.33554 21.3817 5.30107C24.551 5.28146 26.3572 4.9888 29.1718 4.88332C31.0193 4.70891 32.9744 4.63998 33.53 4.53554C33.8099 4.50003 34.0856 4.50003 34.3697 4.50003" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" stroke="#F0F3FB"/>
+<path id="Vector 26" d="M4.50015 8.46872C5.05576 8.88439 5.61137 9.7178 6.03017 10.5888C6.58703 11.747 7.28238 12.6421 7.84008 13.5131C8.47925 14.5113 8.74451 15.5663 9.26775 16.4029C9.74165 17.1606 10.2735 18.2107 10.9388 19.1183C11.322 19.9548 11.8777 20.7882 12.5743 21.4514C12.7153 21.6258 12.7842 21.8326 12.8552 22.0457" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" stroke="#F0F3FB"/>
+<path id="Vector 27" d="M12.8556 22.0457C12.9245 22.7392 13.0645 23.9882 13.2379 25.2091C13.3423 26.5679 13.4822 30.1626 13.6556 33.1391C13.6911 34.2106 13.6911 36.1407 13.6911 38.1292" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" stroke="#F0F3FB"/>
+<path id="Vector 28" d="M13.6916 38.1291C14.6587 38.338 16.6116 38.4759 18.0372 38.5813C19.3291 38.8247 20.0247 39.0336 21.4764 39.138C22.6523 39.1735 24.7202 39.1735 27.2685 38.9646" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" stroke="#F0F3FB"/>
+<path id="Vector 29" d="M27.2676 38.9646C27.2676 38.2753 27.2676 35.9213 27.2332 32.7892C27.1987 31.656 27.1298 31.4493 27.0943 30.0675C27.0587 28.6858 27.0587 26.1354 27.0587 23.5078" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" stroke="#F0F3FB"/>
+<path id="Vector 30" d="M27.0587 23.5078C27.1277 22.9543 27.4055 21.7031 27.9266 19.9987C28.4067 18.4287 29.1433 17.3877 29.6331 16.3058C30.2767 14.8841 30.6765 13.9037 31.0263 13.0671C31.3759 12.2313 31.9297 11.3972 32.4874 10.3528C33.0451 9.23739 33.6007 8.26403 34.2973 7.42748C34.4383 7.21756 34.5073 7.01077 34.7872 6.58884" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" stroke="#F0F3FB"/>
+<path id="Vector 31" d="M37.5031 14.9439C37.6409 14.9439 39.8488 14.9439 43.2931 14.9094C44.6007 14.875 45.0143 14.806 46.9506 14.7705C48.8868 14.735 52.3333 14.735 56.3019 14.5262" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" stroke="#F0F3FB"/>
+<path id="Vector 33" d="M36.4582 31.4451C36.596 31.4451 37.4942 31.4451 38.8508 31.4106C39.5941 31.3917 43.0398 31.2362 48.1208 31.2017C50.3067 31.0983 50.9375 30.9584 51.5965 30.854C51.9797 30.8185 52.4623 30.8185 52.9594 30.8185" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" stroke="#F0F3FB"/>
+<path id="Vector 34" d="M37.0949 23.5872C37.5624 23.5872 38.4203 23.5448 39.9911 23.4806C41.3913 23.4233 44.0201 23.4587 45.4374 23.4375C46.983 23.4144 48.1301 23.3303 49.7561 23.2879C51.3872 23.0734 52.8912 23.031 53.211 22.9668C53.4036 22.945 53.658 22.945 53.92 22.945" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" stroke="#F0F3FB"/>
+</g>
+<defs>
+<filter id="filter0_g_0_12" x="2.38419e-07" y="0" width="60.802" height="43.6557" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.25 0.25" numOctaves="3" seed="947" />
+<feDisplacementMap in="shape" scale="4" xChannelSelector="R" yChannelSelector="G" result="displacedImage" width="100%" height="100%" />
+<feMerge result="effect1_texture_0_12">
+<feMergeNode in="displacedImage"/>
+</feMerge>
+</filter>
+</defs>
+</svg>

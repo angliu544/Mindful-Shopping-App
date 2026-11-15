@@ -1,9 +1,9 @@
 "use client";
 
 import { useId, useRef, useState, type FormEvent } from "react";
-import Link from "next/link";
-import { OrDivider } from "@/components/AuthCard";
+import { AuthSwitchLink, OrDivider } from "@/components/AuthCard";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
+import TextField, { FormError, primaryButton } from "@/components/TextField";
 import { signInWithPassword } from "@/lib/auth-actions";
 import { DEFAULT_AFTER_SIGN_IN } from "@/lib/redirects";
 import { fieldErrorsOf, registerSchema } from "@/lib/validations";
@@ -13,10 +13,10 @@ type Field = "name" | "email" | "password" | "confirmPassword";
 type Status = "idle" | "creating" | "signing-in";
 
 const fields: { name: Field; label: string; type: string; autoComplete: string; hint?: string }[] = [
-  { name: "name", label: "Name", type: "text", autoComplete: "name" },
-  { name: "email", label: "Email", type: "email", autoComplete: "email" },
-  { name: "password", label: "Password", type: "password", autoComplete: "new-password", hint: "At least 8 characters." },
-  { name: "confirmPassword", label: "Confirm password", type: "password", autoComplete: "new-password" },
+  { name: "name", label: "Name:", type: "text", autoComplete: "name" },
+  { name: "email", label: "Email:", type: "email", autoComplete: "email" },
+  { name: "password", label: "Password:", type: "password", autoComplete: "new-password", hint: "At least 8 characters." },
+  { name: "confirmPassword", label: "Confirm Password:", type: "password", autoComplete: "new-password" },
 ];
 
 export default function SignUpForm() {
@@ -87,66 +87,34 @@ export default function SignUpForm() {
 
   return (
     <div>
-      <GoogleSignInButton callbackUrl={DEFAULT_AFTER_SIGN_IN} disabled={busy} />
+      <GoogleSignInButton callbackUrl={DEFAULT_AFTER_SIGN_IN} label="Sign up with Google" disabled={busy} />
       <OrDivider />
 
       <form onSubmit={handleSubmit} noValidate className="space-y-5" aria-busy={busy}>
-        {fields.map((f) => {
-          const id = `${baseId}-${f.name}`;
-          const error = fieldErrors[f.name];
-          return (
-            <div key={f.name}>
-              <label htmlFor={id} className="block font-medium">
-                {f.label}
-              </label>
-              <input
-                id={id}
-                name={f.name}
-                type={f.type}
-                autoComplete={f.autoComplete}
-                value={values[f.name]}
-                onChange={(e) => update(f.name, e.target.value)}
-                disabled={busy}
-                aria-invalid={!!error}
-                aria-describedby={[f.hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(" ") || undefined}
-                className={`mt-2 block w-full rounded-2xl border bg-paper px-4 py-3 text-ink ${error ? "border-red-400" : "border-sage-200"}`}
-              />
-              {f.hint && (
-                <p id={`${id}-hint`} className="mt-1 text-sm text-ink-muted">
-                  {f.hint}
-                </p>
-              )}
-              {error && (
-                <p id={`${id}-error`} className="mt-1 text-sm text-red-700">
-                  {error}
-                </p>
-              )}
-            </div>
-          );
-        })}
+        {fields.map((f) => (
+          <TextField
+            key={f.name}
+            id={`${baseId}-${f.name}`}
+            label={f.label}
+            name={f.name}
+            type={f.type}
+            autoComplete={f.autoComplete}
+            value={values[f.name]}
+            onChange={(e) => update(f.name, e.target.value)}
+            disabled={busy}
+            error={fieldErrors[f.name]}
+            hint={f.hint}
+          />
+        ))}
 
-        {formError && (
-          <p role="alert" className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-800">
-            {formError}
-          </p>
-        )}
+        <FormError message={formError} />
 
-        <button
-          type="submit"
-          disabled={busy}
-          className="flex w-full items-center justify-center gap-2 rounded-full bg-sage-600 px-6 py-3 font-medium text-white hover:bg-sage-700 disabled:opacity-70"
-        >
-          {busy && <span aria-hidden className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
-          {status === "creating" ? "Creating account…" : status === "signing-in" ? "Signing you in…" : "Create account"}
+        <button type="submit" disabled={busy} className={primaryButton}>
+          {status === "creating" ? "Creating account…" : status === "signing-in" ? "Signing you in…" : "Sign up"}
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-ink-muted">
-        Already have an account?{" "}
-        <Link href="/sign-in" className="font-medium text-sage-700 underline underline-offset-2">
-          Sign in
-        </Link>
-      </p>
+      <AuthSwitchLink prompt="Already have an account?" href="/sign-in" label="Sign in" />
     </div>
   );
 }

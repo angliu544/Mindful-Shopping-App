@@ -1,11 +1,12 @@
 export default function LoadingState({ label = "Loading…" }: { label?: string }) {
   return (
-    <div role="status" aria-live="polite" className="flex flex-col items-center gap-3 py-16 text-ink-muted">
+    <div role="status" aria-live="polite" className="flex flex-col items-center gap-6 py-24 text-body sm:py-32">
       <span
         aria-hidden
-        className="h-8 w-8 animate-spin rounded-full border-2 border-sage-200 border-t-sage-600"
+        style={{ filter: "url(#sketch)" }}
+        className="size-20 animate-spin rounded-full border-[8px] border-panel-edge border-t-btn [animation-duration:1.1s] sm:size-28 sm:border-[10px]"
       />
-      <span className="text-sm">{label}</span>
+      <span className="text-[28px] sm:text-[40px]">{label}</span>
     </div>
   );
 }

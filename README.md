@@ -8,7 +8,8 @@ Pause before you purchase. Snap a photo of something you want, wait 24 hours, th
 
 - Sign up / sign in with **Google** or **email and password** (Auth.js).
 - **Add an item** (`/upload`): add a photo (JPEG/PNG/WebP, ≤ 5 MB) by dragging it onto the photo box or tapping to choose one, plus a name, price and an optional reason. The item becomes reviewable 24 hours later.
-- **Review** (`/review`): one card at a time. Swipe right or press **Buy**; swipe left or press **Do Not Buy**; or press **Need More Time** to send the card back for another day (one waiting period) without deciding. The ← / → keys also work, and you can undo the most recent decision. Signed-in visitors to `/` land here.
+- **Review** (`/review`): one card at a time. Swipe right or press **Buy**; swipe left or press **Do Not Buy**; or press **Need More Time** to send the card back for another day (one waiting period) without deciding. The ← / ↓ / → keys also work, and you can undo the most recent decision. Signed-in visitors to `/` land here.
+- **Let's reflect** (before every Buy): a short chat asks about need, use, what you already own, budget, the price in work hours (if you've set an income) and your mood, then suggests buy, more time, or let it go. You make the final choice. Nothing from the chat is saved. The questions and scoring live in `lib/reflection.ts`.
 - **History** (`/history`): your Buy and Do Not Buy lists, the number reviewed, bought and skipped, and the total money saved.
 - **Income settings** (`/settings`, also in the avatar menu): enter an hourly rate or a yearly salary. Cards and savings are then also shown as time worked (e.g. "≈ 3 h 5 min of work").
 

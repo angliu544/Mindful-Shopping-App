@@ -9,7 +9,8 @@ import type { ItemDecision, ItemDTO } from "@/types/item";
 // come from the server-side session, never from the request body.
 
 const REVIEW_QUEUE_LIMIT = 100;
-const HISTORY_LIMIT = 500;
+// High enough that per-year totals (computed in the viewer's time zone) cover any realistic history.
+const HISTORY_LIMIT = 2000;
 
 const roundCents = (n: number) => Math.round(n * 100) / 100;
 

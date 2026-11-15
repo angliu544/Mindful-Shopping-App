@@ -1,6 +1,6 @@
 import "server-only";
 import mongoose, { Schema, type HydratedDocument, type Model } from "mongoose";
-import { CURRENCY, ITEM_DESCRIPTION_MAX_LENGTH, ITEM_NAME_MAX_LENGTH } from "@/lib/constants";
+import { CURRENCY, ITEM_NAME_MAX_LENGTH } from "@/lib/constants";
 import { ITEM_DECISIONS, ITEM_STATUSES, type ItemRecord } from "@/types/item";
 
 const ItemSchema = new Schema<ItemRecord>(
@@ -11,7 +11,8 @@ const ItemSchema = new Schema<ItemRecord>(
     currency: { type: String, default: CURRENCY },
     imageUrl: { type: String, required: true },
     imagePublicId: { type: String, required: true, unique: true },
-    description: { type: String, trim: true, maxlength: ITEM_DESCRIPTION_MAX_LENGTH },
+    // The form now allows 150 characters; older items may have up to 500.
+    description: { type: String, trim: true, maxlength: 500 },
     // Stored as a BSON Date, which is always UTC.
     availableAt: { type: Date, required: true, index: true },
     status: { type: String, enum: ITEM_STATUSES, default: "pending", index: true },

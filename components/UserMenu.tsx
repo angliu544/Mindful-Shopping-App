@@ -46,32 +46,37 @@ export default function UserMenu({ name, email, image }: Props) {
         aria-expanded={open}
         aria-controls={menuId}
         aria-label={`Account menu for ${label}`}
-        className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-sage-600 font-medium text-white"
+        className="relative block size-9 overflow-hidden rounded-full sm:size-11 lg:size-[85px]"
       >
         {image ? (
-          <Image src={image} alt="" width={36} height={36} className="h-full w-full object-cover" />
+          <Image src={image} alt="" width={85} height={85} className="size-full object-cover" />
         ) : (
-          <span aria-hidden>{label.charAt(0).toUpperCase()}</span>
+          // eslint-disable-next-line @next/next/no-img-element -- static design asset
+          <img src="/figma/profile-placeholder.svg" alt="" width={95} height={95} className="size-full" />
         )}
       </button>
 
       {open && (
         <div
           id={menuId}
-          className="absolute right-0 z-20 mt-2 w-60 overflow-hidden rounded-2xl border border-sage-100 bg-paper shadow-lg"
+          className="sk sk-tile absolute right-0 z-30 mt-3 w-[min(85vw,370px)] overflow-hidden rounded-[24px] pb-3 shadow-card"
         >
-          <div className="border-b border-sage-100 px-4 py-3">
-            {name && <p className="truncate font-medium text-ink">{name}</p>}
-            {email && <p className="truncate text-sm text-ink-muted">{email}</p>}
+          <div className="bg-btn px-5 pb-4 pt-3 text-canvas">
+            {name && <p className="truncate text-[26px] leading-tight sm:text-[32px]">{name}</p>}
+            {email && <p className="truncate text-lg sm:text-[22px]">{email}</p>}
           </div>
-          <Link href="/settings" className="block px-4 py-3 text-sm text-ink hover:bg-sage-50">
+          <div className="mx-5 h-0.5 bg-sage-50" aria-hidden />
+          <Link
+            href="/settings"
+            className="mx-2 mt-3 block rounded-[14px] bg-canvas px-4 py-3 text-2xl text-body hover:bg-sage-50 sm:text-[28px]"
+          >
             Income settings
           </Link>
           <form action={signOutAction} onSubmit={() => setSigningOut(true)}>
             <button
               type="submit"
               disabled={signingOut}
-              className="block w-full px-4 py-3 text-left text-sm text-ink hover:bg-sage-50 disabled:opacity-60"
+              className="mx-2 mt-1 block w-[calc(100%-1rem)] rounded-[14px] px-4 py-3 text-left text-2xl text-danger hover:bg-sage-50 disabled:opacity-60 sm:text-[28px]"
             >
               {signingOut ? "Signing out…" : "Sign out"}
             </button>
