@@ -6,9 +6,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOutAction } from "@/lib/auth-actions";
 
-type Props = { name: string | null; email: string | null; image: string | null };
+type Props = { name: string; email: string; avatarUrl: string | null };
 
-export default function UserMenu({ name, email, image }: Props) {
+export default function UserMenu({ name, email, avatarUrl }: Props) {
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -48,8 +48,8 @@ export default function UserMenu({ name, email, image }: Props) {
         aria-label={`Account menu for ${label}`}
         className="relative block size-9 overflow-hidden rounded-full sm:size-11 lg:size-[85px]"
       >
-        {image ? (
-          <Image src={image} alt="" width={85} height={85} className="size-full object-cover" />
+        {avatarUrl ? (
+          <Image src={avatarUrl} alt="" fill sizes="85px" className="object-cover" />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element -- static design asset
           <img src="/figma/profile-placeholder.svg" alt="" width={95} height={95} className="size-full" />
@@ -67,8 +67,14 @@ export default function UserMenu({ name, email, image }: Props) {
           </div>
           <div className="mx-5 h-0.5 bg-sage-50" aria-hidden />
           <Link
-            href="/settings"
+            href="/account"
             className="mx-2 mt-3 block rounded-[14px] bg-canvas px-4 py-3 text-2xl text-body hover:bg-sage-50 sm:text-[28px]"
+          >
+            Account settings
+          </Link>
+          <Link
+            href="/settings"
+            className="mx-2 mt-1 block rounded-[14px] bg-canvas px-4 py-3 text-2xl text-body hover:bg-sage-50 sm:text-[28px]"
           >
             Income settings
           </Link>

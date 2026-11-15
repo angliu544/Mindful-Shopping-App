@@ -126,18 +126,22 @@ const emailSchema = z
 // bcrypt only uses the first 72 bytes of a password, so longer ones are refused.
 const MAX_PASSWORD_BYTES = 72;
 
+const nameSchema = z
+  .string({ error: "Please enter your name." })
+  .trim()
+  .min(1, "Please enter your name.")
+  .max(100, "Keep your name under 100 characters.");
+
+const newPasswordSchema = z
+  .string({ error: "Please choose a password." })
+  .min(8, "Password must be at least 8 characters.")
+  .refine((p) => new TextEncoder().encode(p).length <= MAX_PASSWORD_BYTES, "Password is too long (72 characters max).");
+
 export const registerSchema = z
   .object({
-    name: z
-      .string({ error: "Please enter your name." })
-      .trim()
-      .min(1, "Please enter your name.")
-      .max(100, "Keep your name under 100 characters."),
+    name: nameSchema,
     email: emailSchema,
-    password: z
-      .string({ error: "Please choose a password." })
-      .min(8, "Password must be at least 8 characters.")
-      .refine((p) => new TextEncoder().encode(p).length <= MAX_PASSWORD_BYTES, "Password is too long (72 characters max)."),
+    password: newPasswordSchema,
     confirmPassword: z.string({ error: "Please confirm your password." }),
   })
   .refine((v) => v.password === v.confirmPassword, {
@@ -150,4 +154,30 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export const signInSchema = z.object({
   email: emailSchema,
   password: z.string({ error: "Please enter your password." }).min(1, "Please enter your password.").max(200),
+});
+
+export const accountNameSchema = z.object({ name: nameSchema });
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z
+      .string({ error: "Please enter your current password." })
+      .min(1, "Please enter your current password.")
+      .max(200),
+    newPassword: newPasswordSchema,
+    confirmPassword: z.string({ error: "Please confirm your new password." }),
+  })
+  .refine((v) => v.newPassword === v.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "Passwords don't match.",
+  })
+  .refine((v) => v.newPassword !== v.currentPassword, {
+    path: ["newPassword"],
+    message: "Choose a password that's different from your current one.",
+  });
+
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+export const avatarSchema = z.object({
+  imagePublicId: z.string({ error: "Please choose a photo." }).min(1, "Please choose a photo.").max(255),
 });

@@ -53,7 +53,7 @@ describe("signed out", () => {
       settingsRoute.GET(),
       settingsRoute.PUT(json({})),
       settingsRoute.DELETE(),
-      signatureRoute.POST(),
+      signatureRoute.POST(new Request("http://test/api/uploads/signature", { method: "POST" })),
     ]);
     expect(responses.map((r) => r.status)).toEqual(Array(9).fill(401));
     expect((await Item.findById(id).lean())!.status).toBe("pending");

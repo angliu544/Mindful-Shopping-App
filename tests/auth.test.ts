@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { describe, expect, it, vi } from "vitest";
-import { findOrCreateGoogleUser, registerUser, verifyCredentials } from "@/lib/users";
+import { registerUser, verifyCredentials } from "@/lib/users";
 import { safeCallbackUrl } from "@/lib/redirects";
 import { registerSchema } from "@/lib/validations";
 import { User } from "@/models/User";
@@ -49,8 +49,9 @@ describe("POST /api/register", () => {
     expect(await User.countDocuments()).toBe(1);
   });
 
-  it("rejects registering a password for an email used by a Google account", async () => {
-    await findOrCreateGoogleUser({ googleId: "g-1", email: "ada@example.com", name: "Ada" });
+  it("does not let a sign-up take over an existing account that has no password", async () => {
+    // e.g. an account created by the removed Google sign-in.
+    await User.create({ name: "Ada", email: "ada@example.com" });
     expect((await post(validSignup)).status).toBe(409);
     const user = await User.findOne({ email: "ada@example.com" }).select("+passwordHash").lean();
     expect(user!.passwordHash).toBeUndefined();
@@ -77,7 +78,7 @@ describe("POST /api/register", () => {
 
 describe("email/password sign-in", () => {
   type WithAuthorize = { options: { authorize: (credentials: unknown) => Promise<unknown> } };
-  const authorize = (authConfig.providers[1] as unknown as WithAuthorize).options.authorize;
+  const authorize = (authConfig.providers[0] as unknown as WithAuthorize).options.authorize;
 
   it("signs in with the right password (any email casing)", async () => {
     const { user } = (await registerUser({ name: "Ada", email: "ada@example.com", password: PASSWORD })) as { user: { id: string } };
@@ -91,8 +92,8 @@ describe("email/password sign-in", () => {
     expect(await authorize({ email: "not-an-email", password: "" })).toBeNull();
   });
 
-  it("refuses password sign-in for a Google-only account", async () => {
-    await findOrCreateGoogleUser({ googleId: "g-1", email: "ada@example.com", name: "Ada" });
+  it("refuses password sign-in for an account with no password", async () => {
+    await User.create({ name: "Ada", email: "ada@example.com" });
     expect(await verifyCredentials("ada@example.com", "")).toBeNull();
     expect(await verifyCredentials("ada@example.com", PASSWORD)).toBeNull();
   });
@@ -100,52 +101,25 @@ describe("email/password sign-in", () => {
   it("never returns the password hash", async () => {
     await registerUser({ name: "Ada", email: "ada@example.com", password: PASSWORD });
     const user = await verifyCredentials("ada@example.com", PASSWORD);
-    expect(Object.keys(user!).sort()).toEqual(["email", "id", "image", "name"]);
+    expect(Object.keys(user!).sort()).toEqual(["email", "id", "name"]);
   });
 });
 
-describe("Google sign-in", () => {
-  const { signIn, jwt, session } = authConfig.callbacks;
-  const google = (sub: string) => ({ provider: "google", providerAccountId: sub, type: "oidc" }) as never;
-  const profile = (email: string, verified = true) =>
-    ({ email, email_verified: verified, name: "Ada", picture: "https://lh3.googleusercontent.com/a" }) as never;
+describe("Auth.js config", () => {
+  const { jwt, session } = authConfig.callbacks;
 
-  it("creates a user on first sign-in and reuses it after", async () => {
-    expect(await signIn({ account: google("g-1"), profile: profile("Ada@Example.com") } as never)).toBe(true);
-    expect(await signIn({ account: google("g-1"), profile: profile("ada@example.com") } as never)).toBe(true);
-    const users = await User.find().lean();
-    expect(users).toHaveLength(1);
-    expect(users[0]).toMatchObject({ email: "ada@example.com", googleId: "g-1", name: "Ada" });
-    expect(users[0]).not.toHaveProperty("passwordHash");
+  it("offers email/password sign-in only", () => {
+    expect(authConfig.providers.map((p) => (p as unknown as { id: string }).id)).toEqual(["credentials"]);
   });
 
-  it("puts our MongoDB user id (not Google's id) in the session", async () => {
-    await signIn({ account: google("g-1"), profile: profile("ada@example.com") } as never);
-    const dbUser = await User.findOne({ googleId: "g-1" }).lean();
-    const token = await jwt({ token: { sub: "g-1" }, user: { id: "g-1" }, account: google("g-1") } as never);
-    expect(token.sub).toBe(dbUser!._id.toString());
+  it("puts our MongoDB user id in the token and the session", async () => {
+    const { user } = (await registerUser({ name: "Ada", email: "ada@example.com", password: PASSWORD })) as { user: { id: string } };
+    const token = await jwt({ token: {}, user } as never);
+    expect(token.sub).toBe(user.id);
+    // Later requests have no `user`; the id must stay in the token.
+    expect((await jwt({ token } as never)).sub).toBe(user.id);
     const s = await session({ session: { user: {}, expires: "" }, token } as never);
-    expect((s as { user: { id: string } }).user.id).toBe(dbUser!._id.toString());
-  });
-
-  it("keeps a Google account separate from an existing password account", async () => {
-    await registerUser({ name: "Ada", email: "ada@example.com", password: PASSWORD });
-    expect(await signIn({ account: google("g-1"), profile: profile("ada@example.com") } as never)).toBe(
-      "/sign-in?error=UsePassword",
-    );
-    const user = await User.findOne({ email: "ada@example.com" }).lean();
-    expect(user!.googleId).toBeUndefined();
-  });
-
-  it("refuses an unverified Google email", async () => {
-    expect(await signIn({ account: google("g-1"), profile: profile("ada@example.com", false) } as never)).toBe(
-      "/sign-in?error=GoogleEmailUnverified",
-    );
-    expect(await User.countDocuments()).toBe(0);
-  });
-
-  it("lets credentials sign-ins through (checked in authorize)", async () => {
-    expect(await signIn({ account: { provider: "credentials", type: "credentials" } } as never)).toBe(true);
+    expect((s as { user: { id: string } }).user.id).toBe(user.id);
   });
 });
 

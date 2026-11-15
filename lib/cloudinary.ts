@@ -35,15 +35,26 @@ export function userImagePrefix(userId: string): string {
 }
 
 /**
+ * Profile pictures get their own subfolder, so an item photo can never be used
+ * as an avatar (or the reverse) and deleting one can't remove the other.
+ */
+export function avatarImagePrefix(userId: string): string {
+  return `${userImagePrefix(userId)}avatar/`;
+}
+
+export type UploadPurpose = "item" | "avatar";
+
+/**
  * Signs a direct browser upload. The public ID is chosen here, so the browser
  * can only upload to a fresh location inside the user's own folder, and
  * Cloudinary rejects formats other than jpg/png/webp. Signatures expire after
  * one hour (enforced by Cloudinary). The API secret never leaves the server.
  */
-export function createUploadSignature(userId: string): UploadSignature {
+export function createUploadSignature(userId: string, purpose: UploadPurpose = "item"): UploadSignature {
   const { cloudName, apiKey, apiSecret } = getConfig();
   const timestamp = Math.round(Date.now() / 1000);
-  const publicId = `${userImagePrefix(userId)}${randomUUID()}`;
+  const prefix = purpose === "avatar" ? avatarImagePrefix(userId) : userImagePrefix(userId);
+  const publicId = `${prefix}${randomUUID()}`;
   const allowedFormats = ALLOWED_IMAGE_FORMATS.join(",");
 
   const signature = cloudinary.utils.api_sign_request(

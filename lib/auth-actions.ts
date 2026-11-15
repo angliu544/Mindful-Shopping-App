@@ -10,10 +10,6 @@ export type SignInState = { error: string | null };
 /** Same message for unknown email and wrong password, so neither is revealed. */
 const INVALID_CREDENTIALS = "Incorrect email or password.";
 
-export async function signInWithGoogle(formData: FormData) {
-  await signIn("google", { redirectTo: safeCallbackUrl(formData.get("callbackUrl")) });
-}
-
 export async function signInWithPassword(_prev: SignInState, formData: FormData): Promise<SignInState> {
   const parsed = signInSchema.safeParse({ email: formData.get("email"), password: formData.get("password") });
   if (!parsed.success) return { error: INVALID_CREDENTIALS };

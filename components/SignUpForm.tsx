@@ -1,8 +1,7 @@
 "use client";
 
 import { useId, useRef, useState, type FormEvent } from "react";
-import { AuthSwitchLink, OrDivider } from "@/components/AuthCard";
-import GoogleSignInButton from "@/components/GoogleSignInButton";
+import { AuthSwitchLink } from "@/components/AuthCard";
 import TextField, { FormError, primaryButton } from "@/components/TextField";
 import { signInWithPassword } from "@/lib/auth-actions";
 import { DEFAULT_AFTER_SIGN_IN } from "@/lib/redirects";
@@ -87,9 +86,6 @@ export default function SignUpForm() {
 
   return (
     <div>
-      <GoogleSignInButton callbackUrl={DEFAULT_AFTER_SIGN_IN} label="Sign up with Google" disabled={busy} />
-      <OrDivider />
-
       <form onSubmit={handleSubmit} noValidate className="space-y-5" aria-busy={busy}>
         {fields.map((f) => (
           <TextField

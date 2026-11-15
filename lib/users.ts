@@ -1,7 +1,9 @@
 import "server-only";
 import bcrypt from "bcryptjs";
+import mongoose from "mongoose";
 import { connectToDatabase } from "@/lib/mongodb";
 import { User, type UserDocument } from "@/models/User";
+import type { AccountDTO } from "@/types/account";
 
 // Never log passwords or hashes from this module.
 
@@ -23,11 +25,10 @@ export interface PublicUser {
   id: string;
   name: string;
   email: string;
-  image: string | null;
 }
 
 function toPublicUser(doc: UserDocument): PublicUser {
-  return { id: doc._id.toString(), name: doc.name, email: doc.email, image: doc.image ?? null };
+  return { id: doc._id.toString(), name: doc.name, email: doc.email };
 }
 
 const isDuplicateKey = (error: unknown) => (error as { code?: number })?.code === 11000;
@@ -60,48 +61,70 @@ export async function verifyCredentials(email: string, password: string): Promis
   return matches && user?.passwordHash ? toPublicUser(user) : null;
 }
 
-export type GoogleSignInResult = { ok: true; user: PublicUser } | { ok: false; reason: "email_has_password_account" };
+type Account = AccountDTO;
 
-/**
- * Finds or creates the user for a Google account. Accounts are never linked by
- * email: emails aren't verified for password sign-ups, so linking would let
- * someone who pre-registered an address share the real owner's account.
- */
-export async function findOrCreateGoogleUser(profile: {
-  googleId: string;
-  email: string;
-  name?: string | null;
-  image?: string | null;
-}): Promise<GoogleSignInResult> {
+/** Session ids are MongoDB ObjectIds; anything else can't be a user. */
+const isUserId = (id: string) => mongoose.isValidObjectId(id);
+
+export async function getAccount(userId: string): Promise<Account | null> {
+  if (!isUserId(userId)) return null;
   await connectToDatabase();
-  const email = normalizeEmail(profile.email);
-  const name = profile.name?.trim() || email.split("@")[0];
-
-  const existing = await User.findOne({ googleId: profile.googleId });
-  if (existing) {
-    if (existing.name !== name || (profile.image && existing.image !== profile.image)) {
-      existing.name = name;
-      if (profile.image) existing.image = profile.image;
-      await existing.save();
-    }
-    return { ok: true, user: toPublicUser(existing) };
-  }
-
-  if (await User.exists({ email })) return { ok: false, reason: "email_has_password_account" };
-
-  try {
-    const user = await User.create({ name, email, image: profile.image ?? undefined, googleId: profile.googleId });
-    return { ok: true, user: toPublicUser(user) };
-  } catch (error) {
-    if (!isDuplicateKey(error)) throw error;
-    // A concurrent first sign-in created it; use that one if it's this Google account.
-    const raced = await User.findOne({ googleId: profile.googleId });
-    return raced ? { ok: true, user: toPublicUser(raced) } : { ok: false, reason: "email_has_password_account" };
-  }
+  const user = await User.findById(userId).select("name email avatarUrl").lean();
+  return user ? { name: user.name, email: user.email, avatarUrl: user.avatarUrl ?? null } : null;
 }
 
-export async function findUserIdByGoogleId(googleId: string): Promise<string | null> {
+export async function updateName(userId: string, name: string): Promise<Account | null> {
+  if (!isUserId(userId)) return null;
   await connectToDatabase();
-  const user = await User.findOne({ googleId }).select("_id").lean();
-  return user ? user._id.toString() : null;
+  const user = await User.findByIdAndUpdate(userId, { $set: { name } }, { returnDocument: "after", runValidators: true })
+    .select("name email avatarUrl")
+    .lean();
+  return user ? { name: user.name, email: user.email, avatarUrl: user.avatarUrl ?? null } : null;
+}
+
+export type ChangePasswordResult = { ok: true } | { ok: false; reason: "not_found" | "wrong_password" };
+
+/**
+ * Replaces the password only if the current one is right. The update also
+ * matches the old hash, so two concurrent changes can't both succeed.
+ */
+export async function changePassword(userId: string, currentPassword: string, newPassword: string): Promise<ChangePasswordResult> {
+  if (!isUserId(userId)) return { ok: false, reason: "not_found" };
+  await connectToDatabase();
+  const user = await User.findById(userId).select("+passwordHash");
+  if (!user) return { ok: false, reason: "not_found" };
+
+  const oldHash = user.passwordHash;
+  const matches = await bcrypt.compare(currentPassword, oldHash ?? (await getDummyHash()));
+  if (!matches || !oldHash) return { ok: false, reason: "wrong_password" };
+
+  const passwordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
+  const updated = await User.updateOne({ _id: user._id, passwordHash: oldHash }, { $set: { passwordHash } });
+  return updated.modifiedCount === 1 ? { ok: true } : { ok: false, reason: "wrong_password" };
+}
+
+/** Saves a new profile picture. Returns the previous picture's public id (to delete), or null. */
+export async function setAvatar(
+  userId: string,
+  image: { url: string; publicId: string },
+): Promise<{ account: Account; previousPublicId: string | null } | null> {
+  if (!isUserId(userId)) return null;
+  await connectToDatabase();
+  const before = await User.findByIdAndUpdate(userId, {
+    $set: { avatarUrl: image.url, avatarPublicId: image.publicId },
+  }).lean();
+  if (!before) return null;
+  return {
+    account: { name: before.name, email: before.email, avatarUrl: image.url },
+    previousPublicId: before.avatarPublicId && before.avatarPublicId !== image.publicId ? before.avatarPublicId : null,
+  };
+}
+
+/** Removes the profile picture. Returns the removed picture's public id (to delete), or null. */
+export async function removeAvatar(userId: string): Promise<{ account: Account; previousPublicId: string | null } | null> {
+  if (!isUserId(userId)) return null;
+  await connectToDatabase();
+  const before = await User.findByIdAndUpdate(userId, { $unset: { avatarUrl: 1, avatarPublicId: 1 } }).lean();
+  if (!before) return null;
+  return { account: { name: before.name, email: before.email, avatarUrl: null }, previousPublicId: before.avatarPublicId ?? null };
 }

@@ -5,7 +5,7 @@ import Link from "next/link";
 import ConfettiButton, { CONFETTI_MS } from "@/components/ConfettiButton";
 import TextField, { FormError, TextAreaField } from "@/components/TextField";
 import { ALLOWED_IMAGE_TYPES, ITEM_DESCRIPTION_MAX_LENGTH, ITEM_NAME_MAX_LENGTH } from "@/lib/constants";
-import { describeUploadError } from "@/lib/upload-errors";
+import { UploadError, uploadToCloudinary } from "@/lib/upload-client";
 import { fieldErrorsOf, itemFieldsSchema, parsePriceInput, validateImageFile } from "@/lib/validations";
 import type { ApiErrorBody, CreateItemResponse, UploadSignature } from "@/types/api";
 import type { ItemDTO } from "@/types/item";
@@ -39,34 +39,6 @@ async function postJson<T>(url: string, body?: unknown): Promise<T> {
     throw new RequestError(data?.error ?? "Something went wrong. Please try again.", data?.fieldErrors);
   }
   return data;
-}
-
-async function uploadToCloudinary(file: File, sig: UploadSignature): Promise<string> {
-  const form = new FormData();
-  form.append("file", file);
-  form.append("api_key", sig.apiKey);
-  form.append("timestamp", String(sig.timestamp));
-  form.append("public_id", sig.publicId);
-  form.append("allowed_formats", sig.allowedFormats);
-  form.append("signature", sig.signature);
-
-  let res: Response;
-  try {
-    res = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`, {
-      method: "POST",
-      body: form,
-    });
-  } catch (error) {
-    console.error("Cloudinary upload request failed", error);
-    throw new RequestError("The photo upload failed. Check your connection and try again.");
-  }
-  const data = (await res.json().catch(() => null)) as { public_id?: string; error?: { message?: string } } | null;
-  if (!res.ok || !data?.public_id) {
-    const detail = data?.error?.message ?? `HTTP ${res.status}`;
-    console.error(`Cloudinary rejected the upload (${res.status}): ${detail}`);
-    throw new RequestError(describeUploadError(res.status, detail));
-  }
-  return data.public_id;
 }
 
 const availableFormatter = new Intl.DateTimeFormat(undefined, {
@@ -236,7 +208,10 @@ export default function ItemUploadForm() {
       if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, remaining));
       setStatus("success");
     } catch (error) {
-      const err = error instanceof RequestError ? error : new RequestError("Something went wrong. Please try again.");
+      const err =
+        error instanceof RequestError
+          ? error
+          : new RequestError(error instanceof UploadError ? error.message : "Something went wrong. Please try again.");
       setFormError(err.message);
       if (err.fieldErrors) setFieldErrors(err.fieldErrors);
       setStatus("idle");
