@@ -105,3 +105,10 @@ export async function findUserIdByGoogleId(googleId: string): Promise<string | n
   const user = await User.findOne({ googleId }).select("_id").lean();
   return user ? user._id.toString() : null;
 }
+
+/** Whether a user id from a session still has an account. */
+export async function userExists(userId: string): Promise<boolean> {
+  if (!/^[a-f\d]{24}$/i.test(userId)) return false;
+  await connectToDatabase();
+  return Boolean(await User.exists({ _id: userId }));
+}

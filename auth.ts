@@ -1,7 +1,8 @@
 import NextAuth, { type NextAuthConfig } from "next-auth";
+import type { JWT } from "next-auth/jwt";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-import { findOrCreateGoogleUser, findUserIdByGoogleId, verifyCredentials } from "@/lib/users";
+import { findOrCreateGoogleUser, findUserIdByGoogleId, userExists, verifyCredentials } from "@/lib/users";
 import { signInSchema } from "@/lib/validations";
 
 /** Error codes the sign-in page knows how to explain (see components/SignInForm.tsx). */
@@ -9,6 +10,28 @@ export const SIGN_IN_ERRORS = {
   usePassword: "UsePassword",
   googleEmailUnverified: "GoogleEmailUnverified",
 } as const;
+
+/** How often a session re-checks that its account still exists. */
+const VERIFY_SESSION_EVERY_MS = 5 * 60 * 1000;
+
+/**
+ * A sign-in cookie can outlive its account (deleted, or a different database).
+ * Returning null makes Auth.js end the session and delete the cookie on every
+ * path (pages, the proxy, prefetches), so nobody gets stuck signed in to an
+ * account that isn't there. If the database can't be reached, the session is
+ * kept: pages then show an error screen that offers Sign out.
+ */
+export async function verifySessionUser(token: JWT): Promise<JWT | null> {
+  if (!token.sub) return token;
+  const lastChecked = typeof token.verifiedAt === "number" ? token.verifiedAt : 0;
+  if (Date.now() - lastChecked < VERIFY_SESSION_EVERY_MS) return token;
+  try {
+    if (!(await userExists(token.sub))) return null;
+  } catch {
+    return token;
+  }
+  return { ...token, verifiedAt: Date.now() };
+}
 
 /**
  * Google OAuth and email/password sign-in. Sessions are JWTs (required for the
@@ -50,10 +73,15 @@ export const authConfig = {
         const id = await findUserIdByGoogleId(account.providerAccountId);
         if (!id) throw new Error("Google user missing after sign-in");
         token.sub = id;
-      } else if (account?.provider === "credentials" && user?.id) {
-        token.sub = user.id;
+        token.verifiedAt = Date.now();
+        return token;
       }
-      return token;
+      if (account?.provider === "credentials" && user?.id) {
+        token.sub = user.id;
+        token.verifiedAt = Date.now();
+        return token;
+      }
+      return verifySessionUser(token);
     },
     session({ session, token }) {
       if (token.sub) session.user.id = token.sub;

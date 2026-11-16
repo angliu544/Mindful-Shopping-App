@@ -123,7 +123,7 @@ describe("Google sign-in", () => {
     await signIn({ account: google("g-1"), profile: profile("ada@example.com") } as never);
     const dbUser = await User.findOne({ googleId: "g-1" }).lean();
     const token = await jwt({ token: { sub: "g-1" }, user: { id: "g-1" }, account: google("g-1") } as never);
-    expect(token.sub).toBe(dbUser!._id.toString());
+    expect(token!.sub).toBe(dbUser!._id.toString());
     const s = await session({ session: { user: {}, expires: "" }, token } as never);
     expect((s as { user: { id: string } }).user.id).toBe(dbUser!._id.toString());
   });
