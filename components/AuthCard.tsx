@@ -38,14 +38,6 @@ export default function AuthCard({ title, subtitle, children }: { title: string;
   );
 }
 
-export function OrDivider() {
-  return (
-    <p className="my-5 text-center text-[32px] text-heading sm:text-[39px]" aria-hidden>
-      or
-    </p>
-  );
-}
-
 export function AuthSwitchLink({ prompt, href, label }: { prompt: string; href: string; label: string }) {
   return (
     <p className="mt-4 text-center text-lg text-muted sm:text-[22px]">

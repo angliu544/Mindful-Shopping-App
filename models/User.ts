@@ -5,11 +5,15 @@ export interface UserRecord {
   name: string;
   /** Always stored lowercase and trimmed. */
   email: string;
-  /** bcrypt hash. Absent for Google-only users. Never selected unless asked for. */
+  /**
+   * bcrypt hash; the password itself is never stored. Never selected unless
+   * asked for. Optional only because accounts made by the old Google sign-in
+   * have none (they can't sign in with a password).
+   */
   passwordHash?: string;
-  image?: string;
-  /** Google's stable account id (`sub`), for users who sign in with Google. */
-  googleId?: string;
+  /** Profile picture on Cloudinary (under the user's avatar folder). */
+  avatarUrl?: string;
+  avatarPublicId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,8 +23,8 @@ const UserSchema = new Schema<UserRecord>(
     name: { type: String, required: true, trim: true, maxlength: 100 },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true, maxlength: 254 },
     passwordHash: { type: String, select: false },
-    image: { type: String },
-    googleId: { type: String, unique: true, sparse: true },
+    avatarUrl: { type: String },
+    avatarPublicId: { type: String },
   },
   {
     timestamps: true,

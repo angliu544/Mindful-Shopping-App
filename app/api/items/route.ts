@@ -1,5 +1,5 @@
 import { getApiUserId } from "@/lib/auth";
-import { deleteImage, getStoredImage, userImagePrefix } from "@/lib/cloudinary";
+import { avatarImagePrefix, deleteImage, getStoredImage, userImagePrefix } from "@/lib/cloudinary";
 import { ALLOWED_IMAGE_FORMATS, CURRENCY, MAX_IMAGE_BYTES } from "@/lib/constants";
 import { jsonError, jsonOk } from "@/lib/http";
 import { getReviewQueue, getWaitingPeriodMs, toItemDTO } from "@/lib/items";
@@ -38,8 +38,8 @@ export async function POST(request: Request) {
   }
   const { name, price, description, imagePublicId } = parsed.data;
 
-  // Only images uploaded with a signature issued to this user are accepted.
-  if (!imagePublicId.startsWith(userImagePrefix(userId))) {
+  // Only item photos uploaded with a signature issued to this user are accepted.
+  if (!imagePublicId.startsWith(userImagePrefix(userId)) || imagePublicId.startsWith(avatarImagePrefix(userId))) {
     return jsonError("We couldn't find that photo. Please upload it again.", 400);
   }
 
