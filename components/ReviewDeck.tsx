@@ -241,7 +241,8 @@ export default function ReviewDeck({
 
       {hasItems ? (
         <>
-          <div className="mx-auto mt-3 grid max-w-[781px] pr-[20px] pt-[10px] [--stack-x:10px] [--stack-y:-5px] sm:mt-4 sm:pr-[40px] sm:pt-[12px] sm:[--stack-x:20px] sm:[--stack-y:-6px]">
+          {/* isolate: the cards' z-index (40–50) only orders the stack, never the page's menus. */}
+          <div className="isolate mx-auto mt-3 grid max-w-[781px] pr-[20px] pt-[10px] [--stack-x:10px] [--stack-y:-5px] sm:mt-4 sm:pr-[40px] sm:pt-[12px] sm:[--stack-x:20px] sm:[--stack-y:-6px]">
             {visible.map((item, index) => {
               const leaving = exit?.id === item.id;
               const depth = leaving ? 0 : Math.max(0, index - advance);

@@ -50,9 +50,11 @@ export default function HistoryView({ history, income }: { history: HistoryRespo
     <div>
       <h1 className="text-[34px] leading-tight text-heading sm:text-[58px]">Your decisions:</h1>
 
+      {/* z-10: .sk isolates each panel, so the period menu inside can only rise
+          above the item rows below if the whole panel does. */}
       <section
         aria-labelledby="money-heading"
-        className="sk sk-panel mt-2 rounded-[44px] px-3 pb-4 pt-3 sm:mt-[11px] sm:rounded-[69px] sm:px-[19px] sm:pb-[18px] sm:pt-[10px]"
+        className="sk sk-panel z-10 mt-2 rounded-[44px] px-3 pb-4 pt-3 sm:mt-[11px] sm:rounded-[69px] sm:px-[19px] sm:pb-[18px] sm:pt-[10px]"
       >
         <div className="flex items-start justify-between gap-3 px-3 sm:px-7">
           <h2 id="money-heading" className="text-[30px] leading-tight text-body sm:text-[49px]">
