@@ -1,0 +1,21 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="32.4338" height="29.3363" viewBox="0 0 32.4338 29.3363" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="Decorative star 3" opacity="0.8" filter="url(#filter0_g_0_296)">
+<use xlink:href="#stroke0_0_296" fill="#F0F3FB"/>
+<mask id="stroke1_0_296" fill="white">
+<use xlink:href="#stroke0_0_296"/>
+</mask>
+<path d="M16.2169 1L19.8091 11.4415H31.4338L22.0292 17.8947L25.6215 28.3363L16.2169 21.883L6.81234 28.3363L10.4046 17.8947L1 11.4415H12.6247L16.2169 1Z" stroke-width="4" stroke="#6384A3" mask="url(#stroke1_0_296)"/>
+</g>
+<defs>
+<filter id="filter0_g_0_296" x="0" y="0" width="32.4338" height="29.3363" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.25 0.25" numOctaves="3" seed="8107" />
+<feDisplacementMap in="shape" scale="2" xChannelSelector="R" yChannelSelector="G" result="displacedImage" width="100%" height="100%" />
+<feMerge result="effect1_texture_0_296">
+<feMergeNode in="displacedImage"/>
+</feMerge>
+</filter>
+<path id="stroke0_0_296" d="M16.2169 1L19.8091 11.4415H31.4338L22.0292 17.8947L25.6215 28.3363L16.2169 21.883L6.81234 28.3363L10.4046 17.8947L1 11.4415H12.6247L16.2169 1Z"/>
+</defs>
+</svg>

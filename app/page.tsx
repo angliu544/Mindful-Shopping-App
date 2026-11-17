@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element -- static SVG design assets */
 import Link from "next/link";
+import HowItWorks from "@/components/HowItWorks";
 
 const button =
   "sk flex h-14 min-w-32 items-center justify-center rounded-[20px] px-5 text-[30px] text-canvas lg:h-[76px] lg:min-w-[154px] lg:text-[41px]";
@@ -62,6 +63,8 @@ export default function Home() {
           Sign in
         </Link>
       </div>
+
+      <HowItWorks />
     </div>
   );
 }

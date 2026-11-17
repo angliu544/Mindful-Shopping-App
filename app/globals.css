@@ -141,6 +141,23 @@
   95%, 100% { transform: rotate(0deg); }
 }
 
+/* Same wiggle swinging the other way first (the "How does it work?" stars). */
+@keyframes star-wiggle-mirror {
+  0%, 5.99% { transform: rotate(0deg); }
+  6%, 12.99% { transform: rotate(-18deg); }
+  13%, 19.99% { transform: rotate(24deg); }
+  20%, 28.49% { transform: rotate(-27deg); }
+  28.5%, 35.99% { transform: rotate(20deg); }
+  36%, 43.99% { transform: rotate(-23deg); }
+  44%, 51.99% { transform: rotate(28deg); }
+  52%, 60.99% { transform: rotate(-19deg); }
+  61%, 68.99% { transform: rotate(24deg); }
+  69%, 77.99% { transform: rotate(-25deg); }
+  78%, 86.99% { transform: rotate(18deg); }
+  87%, 94.99% { transform: rotate(-14deg); }
+  95%, 100% { transform: rotate(0deg); }
+}
+
 /* The cart rolls back and forth (from the Figma prototype, 2s loop). */
 @keyframes cart-roll {
   0% { transform: translate(0, 0) rotate(0deg); animation-timing-function: ease-in-out; }
